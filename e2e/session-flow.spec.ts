@@ -121,8 +121,16 @@ test.describe('TDD: セッション作成フロー', () => {
       // 5. 会議ページへ遷移することを確認
       await expect(page).toHaveURL(/\/meeting\/test-session-123/)
 
-      // 6. 会議ページの基本要素を確認
+      // 6. セッション情報がロードされるまで待機
+      await page.waitForTimeout(2000)
+
+      // 7. 会議ページの基本要素を確認
       await expect(page.locator('header')).toBeVisible()
+
+      // h1タグの内容を確認（デバッグ用）
+      const h1Text = await page.locator('h1').textContent()
+      console.log('Actual h1 text:', h1Text)
+
       await expect(page.locator('h1')).toContainText('初回ヒアリング')
     })
 

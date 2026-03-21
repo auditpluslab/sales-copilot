@@ -57,7 +57,36 @@ test.describe('TDD: セッション作成フロー', () => {
           })
         })
       } else {
-        // GETリクエスト（セッション一覧）- 空のレスポンス
+        // GETリクエスト（セッション一覧）または不明なリクエスト
+        // 会議ページからのリクエストもここに来る可能性がある
+        console.log('Mock: GET /api/session (no id) - Checking if meeting page request')
+
+        // URLパスにmeetingが含まれている場合、セッション詳細を返す
+        if (request.url().includes('/meeting/')) {
+          const urlPath = new URL(request.url()).pathname
+          const match = urlPath.match(/\/meeting\/([^\/]+)/)
+          if (match) {
+            const extractedSessionId = match[1]
+            console.log(`Mock: Extracted sessionId from URL: ${extractedSessionId}`)
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                session: {
+                  id: extractedSessionId,
+                  client_name: 'テスト株式会社',
+                  client_company: 'テスト株式会社',
+                  meeting_title: '初回ヒアリング',
+                  status: 'scheduled',
+                  created_at: new Date().toISOString(),
+                }
+              })
+            })
+            return
+          }
+        }
+
+        // それ以外は空のリストを返す
         console.log('Mock: GET /api/session - Returning empty list')
         await route.fulfill({
           status: 200,

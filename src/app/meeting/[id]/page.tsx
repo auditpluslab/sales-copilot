@@ -49,6 +49,8 @@ export default function MeetingPage() {
   // セッション情報を取得
   useEffect(() => {
     const fetchSession = async () => {
+      if (!sessionId) return
+
       try {
         const response = await fetch(`/api/session?id=${sessionId}`)
         if (response.ok) {

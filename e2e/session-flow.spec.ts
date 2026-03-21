@@ -13,11 +13,17 @@ test.describe('TDD: セッション作成フロー', () => {
   test.beforeEach(async ({ page }) => {
     // APIモックの設定
     await page.route('**/api/session', async (route) => {
-      const url = new URL(route.request().url())
+      const request = route.request()
+      const url = new URL(request.url())
       const sessionId = url.searchParams.get('id')
+      const method = request.method()
+
+      console.log(`Mock: ${method} ${request.url()}`)
+      console.log(`Mock: sessionId = ${sessionId}`)
+      console.log(`Mock: search params = ${url.search}`)
 
       // POSTリクエスト（セッション作成）
-      if (route.request().method() === 'POST') {
+      if (method === 'POST') {
         console.log('Mock: POST /api/session - Creating session')
         await route.fulfill({
           status: 200,

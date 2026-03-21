@@ -18,6 +18,7 @@ test.describe('TDD: セッション作成フロー', () => {
 
       // POSTリクエスト（セッション作成）
       if (route.request().method() === 'POST') {
+        console.log('Mock: POST /api/session - Creating session')
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -34,6 +35,7 @@ test.describe('TDD: セッション作成フロー', () => {
         })
       } else if (sessionId) {
         // GETリクエスト（セッション詳細取得）
+        console.log(`Mock: GET /api/session?id=${sessionId} - Returning session details`)
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -50,6 +52,7 @@ test.describe('TDD: セッション作成フロー', () => {
         })
       } else {
         // GETリクエスト（セッション一覧）- 空のレスポンス
+        console.log('Mock: GET /api/session - Returning empty list')
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

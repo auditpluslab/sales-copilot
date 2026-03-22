@@ -6,7 +6,8 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('TDD: 会議ページフロー', () => {
-  const testSessionId = 'test-meeting-session-123'
+  // 有効なUUID形式を使用
+  const testSessionId = '87654321-4321-4321-4321-210987654321'
 
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック

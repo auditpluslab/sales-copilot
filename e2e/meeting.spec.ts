@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('会議ページ', () => {
-  const testSessionId = 'meeting-test-session'
+  // 有効なUUID形式を使用
+  const testSessionId = '12345678-1234-1234-1234-123456789012'
 
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック

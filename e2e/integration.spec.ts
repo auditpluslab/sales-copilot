@@ -20,7 +20,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
-              id: 'integration-session-123',
+              id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', // 有効なUUID形式
               client_name: body.client_name || 'テスト株式会社',
               client_company: body.client_company || 'テスト株式会社',
               meeting_title: body.meeting_title || '初回ヒアリング',
@@ -41,7 +41,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           session: {
-            id: sessionId || 'integration-session-123',
+            id: sessionId || 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', // 有効なUUID形式
             meeting_title: '初回ヒアリング',
             client_name: 'テスト株式会社',
             client_company: 'テスト株式会社',
@@ -79,7 +79,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
     await submitButton.click()
 
     // 5. 会議ページへ遷移
-    await expect(page).toHaveURL(/\/meeting\/integration-session-123/)
+    await expect(page).toHaveURL(/\/meeting\/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/)
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(2000)
 
@@ -126,7 +126,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
         body: JSON.stringify({
           sessions: [
             {
-              id: 'multi-session-1',
+              id: 'cccccccc-cccc-cccc-cccc-cccccccc',
               meeting_title: '1回目の会議',
               client_name: 'クライアントA',
               status: 'scheduled',
@@ -145,7 +145,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
     await page.waitForTimeout(1000)
 
     // URLを確認
-    await expect(page).toHaveURL(/\/meeting\/multi-session-1/)
+    await expect(page).toHaveURL(/\/meeting\/cccccccc-cccc-cccc-cccc-cccccccc/)
 
     // ホームに戻る
     await page.goto('/')
@@ -225,7 +225,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
 
 test.describe('統合テスト: データ整合性', () => {
   test('セッションデータの一貫性', async ({ page }) => {
-    const testSessionId = 'consistency-session-123'
+    const testSessionId = 'dddddddd-dddd-dddd-dddd-dddddddddddddd'
     const testClientName = '一貫性テスト株式会社'
     const testMeetingTitle = '一貫性テスト会議'
 

@@ -23,7 +23,7 @@ test.describe('TDD: セッション作成フロー', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
-              id: 'test-session-123',
+              id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // 有効なUUID形式
               client_name: 'テスト株式会社',
               client_company: 'テスト株式会社',
               meeting_title: '初回ヒアリング',
@@ -42,7 +42,7 @@ test.describe('TDD: セッション作成フロー', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           session: {
-            id: 'test-session-123',
+            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // 有効なUUID形式
             client_name: 'テスト株式会社',
             client_company: 'テスト株式会社',
             meeting_title: '初回ヒアリング',
@@ -83,7 +83,7 @@ test.describe('TDD: セッション作成フロー', () => {
       await submitButton.click()
 
       // 5. 会議ページへ遷移することを確認
-      await expect(page).toHaveURL(/\/meeting\/test-session-123/)
+      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/)
 
       // 6. 会議ページがロードされるのを待機
       await page.waitForLoadState('domcontentloaded')

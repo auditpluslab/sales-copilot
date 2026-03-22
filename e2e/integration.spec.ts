@@ -33,12 +33,15 @@ test.describe('統合テスト: 完全会議フロー', () => {
       }
 
       // GETリクエスト
+      const url = new URL(request.url())
+      const sessionId = url.searchParams.get('id')
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           session: {
-            id: 'integration-session-123',
+            id: sessionId || 'integration-session-123',
             meeting_title: '初回ヒアリング',
             client_name: 'テスト株式会社',
             client_company: 'テスト株式会社',

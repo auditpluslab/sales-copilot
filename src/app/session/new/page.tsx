@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 export default function NewSessionPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     client_name: "",
     client_company: "",
@@ -22,6 +23,7 @@ export default function NewSessionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
 
     try {
       const response = await fetch("/api/session", {
@@ -30,13 +32,21 @@ export default function NewSessionPage() {
         body: JSON.stringify(formData),
       })
 
-      if (!response.ok) throw new Error("Failed to create session")
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to create session" }))
+        throw new Error(errorData.error || "Failed to create session")
+      }
 
       const { session } = await response.json()
+
+      if (!session || !session.id) {
+        throw new Error("Invalid session response")
+      }
+
       router.push(`/meeting/${session.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)
-      alert("セッションの作成に失敗しました")
+      setError(error instanceof Error ? error.message : "セッションの作成に失敗しました")
     } finally {
       setLoading(false)
     }
@@ -121,11 +131,18 @@ export default function NewSessionPage() {
                 />
               </div>
 
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.back()}
+                  disabled={loading}
                 >
                   キャンセル
                 </Button>

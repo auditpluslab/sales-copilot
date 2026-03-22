@@ -4,14 +4,44 @@ import { CreateSessionSchema, UpdateSessionSchema } from "@/lib/validators/sessi
 import { sanitizeInput, isSafeSqlInput } from "@/lib/security/sanitizer"
 import type { Session } from "@/types"
 
-// GET /api/session - セッション一覧取得
+// GET /api/session - セッション一覧取得または個別セッション取得
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
     const status = searchParams.get("status")
     const limitParam = searchParams.get("limit")
 
+    // 個別セッション取得
+    if (id) {
+      // UUIDバリデーション
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(id)) {
+        return NextResponse.json(
+          { error: "Invalid session ID format" },
+          { status: 400 }
+        )
+      }
+
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      if (!data) {
+        return NextResponse.json({ error: "Session not found" }, { status: 404 })
+      }
+
+      return NextResponse.json({ session: data })
+    }
+
+    // セッション一覧取得
     // limitパラメータのバリデーション
     let limit = 20
     if (limitParam) {

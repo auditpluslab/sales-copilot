@@ -14,17 +14,10 @@ test.describe('TDD: セッション作成フロー', () => {
     // APIモックの設定 - POST（セッション作成）
     await page.route('**/api/session', async (route) => {
       const request = route.request()
-      const url = new URL(request.url())
-      const sessionId = url.searchParams.get('id')
       const method = request.method()
-
-      console.log(`Mock: ${method} ${request.url()}`)
-      console.log(`Mock: sessionId from query = ${sessionId}`)
-      console.log(`Mock: current page = ${page.url()}`)
 
       // POSTリクエスト（セッション作成）
       if (method === 'POST') {
-        console.log('Mock: Returning session creation response')
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -42,43 +35,22 @@ test.describe('TDD: セッション作成フロー', () => {
         return
       }
 
-      // GETリクエスト
-      const currentPageUrl = page.url()
-      console.log(`Mock: GET request from ${currentPageUrl}`)
-
-      // 現在のページURLからsessionIdを抽出
-      const sessionMatch = currentPageUrl.match(/\/meeting\/([^\/]+)/)
-
-      if (sessionMatch || sessionId) {
-        // 会議ページからのリクエスト、またはsessionIdがあるリクエスト
-        const effectiveSessionId = sessionId || sessionMatch[1]
-        console.log(`Mock: Returning session details for ${effectiveSessionId}`)
-
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            session: {
-              id: effectiveSessionId,
-              client_name: 'テスト株式会社',
-              client_company: 'テスト株式会社',
-              meeting_title: '初回ヒアリング',
-              status: 'scheduled',
-              created_at: new Date().toISOString(),
-            }
-          })
+      // GETリクエスト - すべてのGETリクエストに対してテストセッションを返す
+      // （会議ページからのリクエストを確実にキャプチャするため）
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          session: {
+            id: 'test-session-123',
+            client_name: 'テスト株式会社',
+            client_company: 'テスト株式会社',
+            meeting_title: '初回ヒアリング',
+            status: 'scheduled',
+            created_at: new Date().toISOString(),
+          }
         })
-      } else {
-        // ホームページからのセッション一覧リクエスト
-        console.log('Mock: Returning empty session list')
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            sessions: []
-          })
-        })
-      }
+      })
     })
 
     // Inngest APIもモック

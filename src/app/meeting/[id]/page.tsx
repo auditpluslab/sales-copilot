@@ -17,6 +17,7 @@ export default function MeetingPage() {
   const sessionId = params.id as string
 
   const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [insight, setInsight] = useState<Insight | null>(null)
   const [suggestions, setSuggestions] = useState<{
     questions: DeepDiveQuestion[]
@@ -49,16 +50,27 @@ export default function MeetingPage() {
   // セッション情報を取得
   useEffect(() => {
     const fetchSession = async () => {
-      if (!sessionId) return
+      if (!sessionId) {
+        console.error('No sessionId found')
+        setIsLoading(false)
+        return
+      }
 
       try {
-        const response = await fetch(`/api/session?id=${sessionId}`)
+        // URLSearchParamsを使用して確実にクエリパラメータを付与
+        const params = new URLSearchParams({ id: sessionId })
+        const response = await fetch(`/api/session?${params.toString()}`)
         if (response.ok) {
           const data = await response.json()
+          console.log('Session data:', data)
           setSession(data.session)
+        } else {
+          console.error('Failed to fetch session:', response.status, response.statusText)
         }
       } catch (error) {
         console.error("Failed to fetch session:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
 

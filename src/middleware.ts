@@ -49,15 +49,25 @@ export function middleware(request: NextRequest) {
   }
 
   // 2. セキュリティヘッダーの追加
+  response.headers.set('X-DNS-Prefetch-Control', 'false')
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
+  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()')
 
-  // 本番環境ではStrict-Transport-Securityを有効化
+  // CSP (Content Security Policy)
   if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.openai.com https://api.deepgram.com; frame-ancestors 'self';"
+    )
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  } else {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self' 'unsafe-eval' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* https://api.openai.com https://api.deepgram.com ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'self';"
+    )
   }
 
   // 3. APIエンドポイントのレート制限

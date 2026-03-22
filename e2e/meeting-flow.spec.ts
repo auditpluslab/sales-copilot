@@ -17,7 +17,7 @@ test.describe('TDD: 会議ページフロー', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: 'テスト会議',
+            meeting_title: 'テスト会議',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),
@@ -385,7 +385,7 @@ test.describe('TDD: 文字起こし表示', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: '文字起こしテスト会議',
+            meeting_title: '文字起こしテスト会議',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),
@@ -443,7 +443,7 @@ test.describe('TDD: 文字起こし表示', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: '空テスト会議',
+            meeting_title: '空テスト会議',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),
@@ -479,7 +479,7 @@ test.describe('TDD: エラーハンドリング', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: 'エラーテスト会議',
+            meeting_title: 'エラーテスト会議',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),
@@ -519,7 +519,7 @@ test.describe('TDD: エラーハンドリング', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: 'STTエラーテスト',
+            meeting_title: 'STTエラーテスト',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),

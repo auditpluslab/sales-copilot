@@ -63,6 +63,16 @@ test.describe('TDD: セッション作成フロー', () => {
     })
   })
 
+    // Inngest APIもモック
+    await page.route('**/inngest/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ids: ['event-123'] })
+      })
+    })
+  })
+
   test.describe('RED: 最初に書くテスト（失敗することを確認）', () => {
     test('新しいセッションを作成して会議ページへ遷移する', async ({ page }) => {
       // 1. ホームページを表示

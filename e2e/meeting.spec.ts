@@ -12,7 +12,7 @@ test.describe('会議ページ', () => {
         body: JSON.stringify({
           session: {
             id: testSessionId,
-            title: 'テスト会議',
+            meeting_title: 'テスト会議',
             client_name: 'テストクライアント',
             status: 'active',
             created_at: new Date().toISOString(),

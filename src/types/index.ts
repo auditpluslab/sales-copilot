@@ -4,17 +4,22 @@
 
 export interface Session {
   id: string
-  title: string
+  // 互換性のため両方のフィールドを持つ
+  // meeting_titleが優先される（新しいフォームから作成されたセッション）
+  title?: string
+  meeting_title?: string
   client_name: string | null
-  meeting_type: MeetingType | null
-  started_at: string
-  ended_at: string | null
-  created_by: string
-  consent_confirmed: boolean
+  client_company?: string | null
+  meeting_type?: MeetingType | null
+  meeting_date?: string
+  started_at?: string
+  ended_at?: string | null
+  created_by?: string
+  consent_confirmed?: boolean
   notes?: string
   status?: string
-  meeting_title?: string
   created_at?: string
+  updated_at?: string
 }
 
 export type MeetingType =

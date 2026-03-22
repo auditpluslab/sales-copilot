@@ -182,7 +182,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
-              id: 'recovery-session-123',
+              id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
               client_name: body.client_name,
               client_company: body.client_company,
               meeting_title: body.meeting_title,
@@ -225,26 +225,33 @@ test.describe('統合テスト: 完全会議フロー', () => {
 
 test.describe('統合テスト: データ整合性', () => {
   test('セッションデータの一貫性', async ({ page }) => {
-    const testSessionId = 'dddddddd-dddd-dddd-dddd-dddddddddddddd'
+    const testSessionId = 'dddddddd-dddd-dddd-dddd-ddddddddddddd'
     const testClientName = '一貫性テスト株式会社'
     const testMeetingTitle = '一貫性テスト会議'
 
     // APIモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: testMeetingTitle,
-            client_name: testClientName,
-            client_company: testClientName,
-            status: 'scheduled',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: testMeetingTitle,
+              client_name: testClientName,
+              client_company: testClientName,
+              status: 'scheduled',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     // 会議ページを表示

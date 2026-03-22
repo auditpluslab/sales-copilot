@@ -11,25 +11,36 @@ test.describe('TDD: 会議ページフロー', () => {
 
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: 'テスト会議',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-            started_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: 'テスト会議',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+              started_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     // インサイトAPIをモック
-    await page.route(`**/api/insight?session_id=${testSessionId}`, async (route) => {
+    await page.route('**/api/insight**', async (route) => {
+      const url = new URL(route.request().url())
+      const sessionId = url.searchParams.get('session_id')
+
+      if (sessionId === testSessionId) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -88,10 +99,17 @@ test.describe('TDD: 会議ページフロー', () => {
           }
         })
       })
+    } else {
+      await route.continue()
+    }
     })
 
     // 提案APIをモック
-    await page.route(`**/api/suggestions?session_id=${testSessionId}`, async (route) => {
+    await page.route('**/api/suggestions**', async (route) => {
+      const url = new URL(route.request().url())
+      const sessionId = url.searchParams.get('session_id')
+
+      if (sessionId === testSessionId) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -142,6 +160,9 @@ test.describe('TDD: 会議ページフロー', () => {
           }
         })
       })
+    } else {
+      await route.continue()
+    }
     })
 
     // Inngest APIをモック
@@ -376,27 +397,38 @@ test.describe('TDD: 会議ページフロー', () => {
 
 test.describe('TDD: 文字起こし表示', () => {
   test('文字起こしタブでリアルタイム更新', async ({ page }) => {
-    const testSessionId = 'transcript-test-session'
+    const testSessionId = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
 
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: '文字起こしテスト会議',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: '文字起こしテスト会議',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     // 文字起こしAPIをモック
-    await page.route(`**/api/transcript?session_id=${testSessionId}`, async (route) => {
+    await page.route('**/api/transcript**', async (route) => {
+      const url = new URL(route.request().url())
+      const sessionId = url.searchParams.get('session_id')
+
+      if (sessionId === testSessionId) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -425,6 +457,9 @@ test.describe('TDD: 文字起こし表示', () => {
           ]
         })
       })
+    } else {
+      await route.continue()
+    }
     })
 
     await page.goto(`/meeting/${testSessionId}`)
@@ -434,31 +469,45 @@ test.describe('TDD: 文字起こし表示', () => {
   })
 
   test('空の文字起こし時にメッセージ表示', async ({ page }) => {
-    const testSessionId = 'empty-transcript-session'
+    const testSessionId = '00000000-0000-0000-0000-000000000000'
 
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: '空テスト会議',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: '空テスト会議',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
-    await page.route(`**/api/transcript?session_id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ segments: [] })
-      })
+    await page.route('**/api/transcript**', async (route) => {
+      const url = new URL(route.request().url())
+      const sessionId = url.searchParams.get('session_id')
+
+      if (sessionId === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ segments: [] })
+        })
+      } else {
+        await route.continue()
+      }
     })
 
     await page.goto(`/meeting/${testSessionId}`)
@@ -470,32 +519,46 @@ test.describe('TDD: 文字起こし表示', () => {
 
 test.describe('TDD: エラーハンドリング', () => {
   test('インサイト読み込みエラー', async ({ page }) => {
-    const testSessionId = 'error-test-session'
+    const testSessionId = '11111111-1111-1111-1111-111111111111'
 
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: 'エラーテスト会議',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: 'エラーテスト会議',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     // インサイトAPIでエラーを返す
-    await page.route(`**/api/insight?session_id=${testSessionId}`, async (route) => {
+    await page.route('**/api/insight**', async (route) => {
+      const url = new URL(route.request().url())
+      const sessionId = url.searchParams.get('session_id')
+
+      if (sessionId === testSessionId) {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
         body: JSON.stringify({ error: 'Internal Server Error' })
       })
+    } else {
+      await route.continue()
+    }
     })
 
     await page.goto(`/meeting/${testSessionId}`)
@@ -510,23 +573,30 @@ test.describe('TDD: エラーハンドリング', () => {
   })
 
   test('STT接続エラー時のリトライ', async ({ page }) => {
-    const testSessionId = 'stt-error-session'
+    const testSessionId = '22222222-2222-2222-2222-222222222222'
 
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: 'STTエラーテスト',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: 'STTエラーテスト',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     await page.goto(`/meeting/${testSessionId}`)

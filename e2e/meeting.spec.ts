@@ -6,20 +6,28 @@ test.describe('会議ページ', () => {
 
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック
-    await page.route(`**/api/session?id=${testSessionId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: testSessionId,
-            meeting_title: 'テスト会議',
-            client_name: 'テストクライアント',
-            status: 'active',
-            created_at: new Date().toISOString(),
-          }
+    await page.route('**/api/session**', async (route) => {
+      const url = new URL(route.request().url())
+      const id = url.searchParams.get('id')
+
+      // 特定のセッションIDの場合のみモック
+      if (id === testSessionId) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: testSessionId,
+              meeting_title: 'テスト会議',
+              client_name: 'テストクライアント',
+              status: 'active',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        await route.continue()
+      }
     })
 
     await page.goto(`/meeting/${testSessionId}`)

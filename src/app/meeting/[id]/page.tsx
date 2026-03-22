@@ -62,10 +62,18 @@ export default function MeetingPage() {
         const response = await fetch(`/api/session?${params.toString()}`, {
           cache: 'no-store', // ブラウザからリクエストを送信する
         })
+
         if (response.ok) {
           const data = await response.json()
           console.log('Session data:', data)
-          setSession(data.session)
+
+          // レスポンスデータの検証
+          if (data?.session && typeof data.session === 'object') {
+            setSession(data.session)
+          } else {
+            console.error('Invalid session data format:', data)
+            setIsLoading(false)
+          }
         } else {
           console.error('Failed to fetch session:', response.status, response.statusText)
           setIsLoading(false)
@@ -120,7 +128,9 @@ export default function MeetingPage() {
       const response = await fetch(`/api/insight?session_id=${sessionId}`)
       if (response.ok) {
         const data = await response.json()
-        setInsight(data.insight)
+        if (data?.insight && typeof data.insight === 'object') {
+          setInsight(data.insight)
+        }
       }
     } catch (error) {
       console.error("Failed to fetch insight:", error)
@@ -133,7 +143,9 @@ export default function MeetingPage() {
       const response = await fetch(`/api/suggestions?session_id=${sessionId}`)
       if (response.ok) {
         const data = await response.json()
-        setSuggestions(data.suggestions)
+        if (data?.suggestions && typeof data.suggestions === 'object') {
+          setSuggestions(data.suggestions)
+        }
       }
     } catch (error) {
       console.error("Failed to fetch suggestions:", error)

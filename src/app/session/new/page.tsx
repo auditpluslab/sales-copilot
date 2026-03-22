@@ -26,6 +26,19 @@ export default function NewSessionPage() {
     setError(null)
 
     try {
+      // フォームデータの検証
+      if (!formData.client_name || !formData.client_name.trim()) {
+        setError("顧客名を入力してください")
+        setLoading(false)
+        return
+      }
+
+      if (!formData.meeting_title || !formData.meeting_title.trim()) {
+        setError("会議タイトルを入力してください")
+        setLoading(false)
+        return
+      }
+
       const response = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,12 +50,22 @@ export default function NewSessionPage() {
         throw new Error(errorData.error || "Failed to create session")
       }
 
-      const { session } = await response.json()
+      const result = await response.json()
 
-      if (!session || !session.id) {
-        throw new Error("Invalid session response")
+      // レスポンスデータの検証
+      if (!result?.session || !result.session?.id) {
+        throw new Error("Invalid session response from server")
       }
 
+      const { session } = result
+
+      // セッションIDの検証
+      if (typeof session.id !== 'string' || !session.id.trim()) {
+        throw new Error("Invalid session ID in response")
+      }
+
+      // ナビゲーション前に最終確認
+      console.log("Navigating to meeting page with session:", session.id)
       router.push(`/meeting/${session.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)

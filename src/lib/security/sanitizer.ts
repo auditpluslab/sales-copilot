@@ -60,7 +60,7 @@ export function isSafeSqlInput(input: string): boolean {
     /(--)|(;)|(\bDROP\b)/i,
     /(\bUNION\b.*\bSELECT\b)/i,
     /(\bEXEC\b)|(\bEXECUTE\b)/i,
-    /(');|(\");)/i,
+    /(?:'\);|"\);)/i,
   ]
 
   return !sqlPatterns.some(pattern => pattern.test(input))

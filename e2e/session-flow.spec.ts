@@ -85,13 +85,15 @@ test.describe('TDD: セッション作成フロー', () => {
       // 5. 会議ページへ遷移することを確認
       await expect(page).toHaveURL(/\/meeting\/test-session-123/)
 
-      // 6. 会議ページが表示されることを確認
-      await expect(page.locator('header')).toBeVisible()
-      await expect(page.locator('h1')).toBeVisible()
+      // 6. 会議ページがロードされるのを待機
+      await page.waitForLoadState('domcontentloaded')
 
-      // 注: セッションタイトルの表示は、サーバーサイドレンダリングと
-      // Playwrightのモックの互換性の問題により、一時的にスキップ
-      // セッション作成とページ遷移が成功していることを確認
+      // 7. セッション情報がロードされるまで待機
+      await page.waitForTimeout(3000)
+
+      // 8. 会議ページの基本要素を確認
+      await expect(page.locator('header')).toBeVisible()
+      await expect(page.locator('h1')).toContainText('初回ヒアリング')
     })
 
     test('必須項目未入力でバリデーションエラー', async ({ page }) => {

@@ -59,17 +59,19 @@ export default function MeetingPage() {
       try {
         // URLSearchParamsを使用して確実にクエリパラメータを付与
         const params = new URLSearchParams({ id: sessionId })
-        const response = await fetch(`/api/session?${params.toString()}`)
+        const response = await fetch(`/api/session?${params.toString()}`, {
+          cache: 'no-store', // ブラウザからリクエストを送信する
+        })
         if (response.ok) {
           const data = await response.json()
           console.log('Session data:', data)
           setSession(data.session)
         } else {
           console.error('Failed to fetch session:', response.status, response.statusText)
+          setIsLoading(false)
         }
       } catch (error) {
         console.error("Failed to fetch session:", error)
-      } finally {
         setIsLoading(false)
       }
     }
@@ -140,6 +142,17 @@ export default function MeetingPage() {
 
   const finalSegments = getFinalSegments()
   const interimSegment = getInterimSegment()
+
+  // ローディング中の表示
+  if (isLoading) {
+    return (
+      <main className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-500">セッション情報を読み込み中...</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="h-screen flex flex-col bg-gray-50">

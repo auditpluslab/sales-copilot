@@ -7,11 +7,9 @@ test.describe('会議ページ', () => {
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      // 特定のセッションIDの場合のみモック
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

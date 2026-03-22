@@ -135,7 +135,7 @@ test.describe('TDD: セッション作成フロー', () => {
       await submitButton.click()
 
       // 会議ページへ遷移したことを確認
-      await expect(page).toHaveURL(/\/meeting\/test-session-123/)
+      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/)
 
       // 会議ページの基本要素を確認
       await expect(page.locator('header')).toBeVisible()

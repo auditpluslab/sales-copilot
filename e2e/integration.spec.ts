@@ -107,7 +107,7 @@ test.describe('統合テスト: 完全会議フロー', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
-              id: `multi-session-${sessionCounter}`,
+              id: 'cccccccc-cccc-cccc-cccc-cccccccc',
               client_name: body.client_name,
               client_company: body.client_company,
               meeting_title: body.meeting_title,
@@ -231,10 +231,9 @@ test.describe('統合テスト: データ整合性', () => {
 
     // APIモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

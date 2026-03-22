@@ -12,10 +12,9 @@ test.describe('TDD: 会議ページフロー', () => {
   test.beforeEach(async ({ page }) => {
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -37,10 +36,9 @@ test.describe('TDD: 会議ページフロー', () => {
 
     // インサイトAPIをモック
     await page.route('**/api/insight**', async (route) => {
-      const url = new URL(route.request().url())
-      const sessionId = url.searchParams.get('session_id')
-
-      if (sessionId === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`session_id=${testSessionId}`)) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -106,10 +104,9 @@ test.describe('TDD: 会議ページフロー', () => {
 
     // 提案APIをモック
     await page.route('**/api/suggestions**', async (route) => {
-      const url = new URL(route.request().url())
-      const sessionId = url.searchParams.get('session_id')
-
-      if (sessionId === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`session_id=${testSessionId}`)) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -401,10 +398,9 @@ test.describe('TDD: 文字起こし表示', () => {
 
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -425,10 +421,9 @@ test.describe('TDD: 文字起こし表示', () => {
 
     // 文字起こしAPIをモック
     await page.route('**/api/transcript**', async (route) => {
-      const url = new URL(route.request().url())
-      const sessionId = url.searchParams.get('session_id')
-
-      if (sessionId === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`session_id=${testSessionId}`)) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -473,10 +468,9 @@ test.describe('TDD: 文字起こし表示', () => {
 
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -496,10 +490,9 @@ test.describe('TDD: 文字起こし表示', () => {
     })
 
     await page.route('**/api/transcript**', async (route) => {
-      const url = new URL(route.request().url())
-      const sessionId = url.searchParams.get('session_id')
-
-      if (sessionId === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`session_id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -523,10 +516,9 @@ test.describe('TDD: エラーハンドリング', () => {
 
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -547,10 +539,9 @@ test.describe('TDD: エラーハンドリング', () => {
 
     // インサイトAPIでエラーを返す
     await page.route('**/api/insight**', async (route) => {
-      const url = new URL(route.request().url())
-      const sessionId = url.searchParams.get('session_id')
-
-      if (sessionId === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`session_id=${testSessionId}`)) {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
@@ -577,10 +568,9 @@ test.describe('TDD: エラーハンドリング', () => {
 
     // セッションAPIをモック
     await page.route('**/api/session**', async (route) => {
-      const url = new URL(route.request().url())
-      const id = url.searchParams.get('id')
-
-      if (id === testSessionId) {
+      const requestUrl = route.request().url()
+      // URLにセッションIDが含まれているかチェック
+      if (requestUrl.includes(`id=${testSessionId}`)) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

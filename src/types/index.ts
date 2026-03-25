@@ -10,6 +10,7 @@ export interface Session {
   meeting_title?: string
   client_name: string | null
   client_company?: string | null
+  client_id?: string | null  // クライアントテーブルへの参照
   meeting_type?: MeetingType | null
   meeting_date?: string
   started_at?: string
@@ -20,6 +21,7 @@ export interface Session {
   status?: string
   created_at?: string
   updated_at?: string
+  user_id?: string  // ユーザー認証用
 }
 
 export type MeetingType =
@@ -226,4 +228,133 @@ export interface MeetingUIState {
   isPaused: boolean
   showPinnedOnly: boolean
   activeTab: "transcript" | "summary" | "questions" | "proposals"
+}
+
+// ============================================
+// Client Types
+// ============================================
+
+export interface Client {
+  id: string
+  user_id: string
+  name: string
+  company?: string | null
+  industry?: string | null
+  company_size?: "small" | "medium" | "large" | "enterprise" | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CompanySize = "small" | "medium" | "large" | "enterprise"
+
+// ============================================
+// Client Insights Types
+// ============================================
+
+export interface ClientInsight {
+  id: string
+  client_id: string
+  session_id: string
+  pain_points: PainPoint[]
+  constraints: Constraint[]
+  stakeholders: Stakeholder[]
+  evolution: EvolutionData
+  is_latest: boolean
+  session_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface EvolutionData {
+  session_date: string
+  session_count: number
+  // 時系列での変化を追跡
+  pain_points_evolution?: PainPointEvolution[]
+  interests_evolution?: string[]
+  concerns_evolution?: string[]
+  decisions_evolution?: string[]
+}
+
+export interface PainPointEvolution {
+  date: string
+  pain_points: PainPoint[]
+}
+
+// ============================================
+// Conversation History Types
+// ============================================
+
+export interface ConversationHistory {
+  client_id: string
+  sessions: SessionHistory[]
+  evolution: {
+    pain_points: PainPointEvolution[]
+    interests: InterestEvolution[]
+    concerns: ConcernEvolution[]
+    decisions: DecisionEvolution[]
+  }
+}
+
+export interface SessionHistory {
+  session_id: string
+  date: string
+  summary: string
+  key_topics: string[]
+  stakeholder_attitudes: Record<string, string>
+  pain_points: PainPoint[]
+  constraints: Constraint[]
+  sentiment: Sentiment
+}
+
+export interface InterestEvolution {
+  date: string
+  interests: string[]
+}
+
+export interface ConcernEvolution {
+  date: string
+  concerns: string[]
+}
+
+export interface DecisionEvolution {
+  date: string
+  decisions: string[]
+}
+
+// ============================================
+// Current Context Types (直近の会話)
+// ============================================
+
+export interface CurrentContext {
+  recent_statements: string[]           // 直近5件の発言
+  last_speaker_statement: string        // 最後の発言
+  current_topic: string                 // 現在話しているトピック
+  keywords: string[]                    // 直近で使われたキーワード
+  interest_level: "high" | "medium" | "low"  // 興味のレベル
+  quoted_phrases: string[]              // 引用可能なフレーズ
+  urgency: "high" | "medium" | "low"    // 緊急度
+  speaker_reaction?: string             // 直前の相手の反応
+}
+
+// ============================================
+// Contextual Suggestions Types
+// ============================================
+
+export interface ContextualSuggestionInput {
+  client_id: string
+  current_transcript: string
+  current_insight: Insight
+  history?: ConversationHistory
+  current_context?: CurrentContext
+}
+
+export interface EnhancedSuggestions {
+  questions: DeepDiveQuestion[]
+  proposals: SuggestionCard[]
+  context_used: {
+    history_sessions_used: number
+    recent_statements_used: number
+    evolution_detected: boolean
+  }
 }

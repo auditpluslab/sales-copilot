@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/auth'
 
 test.describe('ホームページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -39,6 +39,9 @@ test.describe('アクセシビリティ', () => {
   test('見出し構造が正しい', async ({ page }) => {
     await page.goto('/')
 
+    // 認証済み状態でh1が表示されるのを待つ
+    await page.waitForSelector('h1', { timeout: 5000 })
+
     // h1が1つだけ存在
     const h1Count = await page.locator('h1').count()
     expect(h1Count).toBe(1)
@@ -50,6 +53,9 @@ test.describe('アクセシビリティ', () => {
 
   test('ボタンがキーボードでアクセス可能', async ({ page }) => {
     await page.goto('/')
+
+    // ページが完全に読み込まれるのを待つ
+    await page.waitForLoadState('networkidle')
 
     // Tabキーでフォーカス移動
     await page.keyboard.press('Tab')

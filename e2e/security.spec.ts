@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/auth'
 
 /**
  * セキュリティE2Eテスト
@@ -17,7 +17,8 @@ test.describe('セキュリティ: 入力バリデーション', () => {
     await page.fill('#meeting_title', sqlInjection)
 
     // フォームを送信
-    const submitButton = page.locator('button[type="submit"]')
+    const submitButton = page.locator('form button[type="submit"]')
+    await expect(submitButton).toBeVisible()
     await submitButton.click()
 
     // ページがクラッシュしていないことを確認（正常に防御されている）
@@ -44,7 +45,8 @@ test.describe('セキュリティ: 入力バリデーション', () => {
       await page.fill('#client_name', payload)
       await page.fill('#meeting_title', payload)
 
-      const submitButton = page.locator('button[type="submit"]')
+      const submitButton = page.locator('form button[type="submit"]')
+      await expect(submitButton).toBeVisible()
       await submitButton.click()
       await page.waitForTimeout(1000)
 

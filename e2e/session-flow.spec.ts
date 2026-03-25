@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/auth'
 
 /**
  * TDD: セッション作成フローのE2Eテスト
@@ -11,10 +11,18 @@ import { test, expect } from '@playwright/test'
 
 test.describe('TDD: セッション作成フロー', () => {
   test.beforeEach(async ({ page }) => {
+    // コンソールログをキャプチャ（テスト開始前に設定）
+    page.on('console', msg => {
+      console.log('🖥️  Browser Console:', msg.text())
+    })
+
     // APIモックの設定 - POST（セッション作成）
-    await page.route('**/api/session', async (route) => {
+    await page.route('**/api/session**', async (route) => {
       const request = route.request()
       const method = request.method()
+      const url = request.url()
+
+      console.log('🔍 API Request:', method, url)
 
       // POSTリクエスト（セッション作成）
       if (method === 'POST') {
@@ -23,7 +31,7 @@ test.describe('TDD: セッション作成フロー', () => {
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
-              id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // 有効なUUID形式
+              id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', // 有効なUUID v4形式
               client_name: 'テスト株式会社',
               client_company: 'テスト株式会社',
               meeting_title: '初回ヒアリング',
@@ -35,22 +43,38 @@ test.describe('TDD: セッション作成フロー', () => {
         return
       }
 
-      // GETリクエスト - すべてのGETリクエストに対してテストセッションを返す
-      // （会議ページからのリクエストを確実にキャプチャするため）
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          session: {
-            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // 有効なUUID形式
-            client_name: 'テスト株式会社',
-            client_company: 'テスト株式会社',
-            meeting_title: '初回ヒアリング',
-            status: 'scheduled',
-            created_at: new Date().toISOString(),
-          }
+      // GETリクエスト
+      const urlObj = new URL(request.url())
+      const sessionId = urlObj.searchParams.get('id')
+
+      if (sessionId) {
+        // 特定のセッションを取得（会議ページからのリクエスト）
+        console.log('✓ GET request with session ID, returning single session')
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            session: {
+              id: sessionId,
+              client_name: 'テスト株式会社',
+              client_company: 'テスト株式会社',
+              meeting_title: '初回ヒアリング',
+              status: 'scheduled',
+              created_at: new Date().toISOString(),
+            }
+          })
         })
-      })
+      } else {
+        // セッション一覧を取得（ホームページからのリクエスト）
+        console.log('✓ GET request without session ID, returning empty sessions list')
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            sessions: []
+          })
+        })
+      }
     })
 
     // Inngest APIもモック
@@ -79,11 +103,12 @@ test.describe('TDD: セッション作成フロー', () => {
       await page.fill('#meeting_title', '初回ヒアリング')
 
       // 4. 送信
-      const submitButton = page.locator('button[type="submit"]')
+      const submitButton = page.locator('form button[type="submit"]')
+      await expect(submitButton).toBeVisible()
       await submitButton.click()
 
       // 5. 会議ページへ遷移することを確認
-      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/)
+      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/)
 
       // 6. 会議ページがロードされるのを待機
       await page.waitForLoadState('domcontentloaded')
@@ -93,14 +118,19 @@ test.describe('TDD: セッション作成フロー', () => {
 
       // 8. 会議ページの基本要素を確認
       await expect(page.locator('header')).toBeVisible()
-      await expect(page.locator('h1')).toContainText('初回ヒアリング')
+
+      // ヘッダー内のh1タグを確認（より具体的なセレクタ）
+      const h1Text = await page.locator('header h1').textContent()
+      console.log('📄 Current h1 text:', h1Text)
+      await expect(page.locator('header h1')).toContainText('初回ヒアリング')
     })
 
     test('必須項目未入力でバリデーションエラー', async ({ page }) => {
       await page.goto('/session/new')
 
       // 空のまま送信
-      const submitButton = page.locator('button[type="submit"]')
+      const submitButton = page.locator('form button[type="submit"]')
+      await expect(submitButton).toBeVisible()
       await submitButton.click()
 
       // フォームが送信されないことを確認
@@ -135,7 +165,7 @@ test.describe('TDD: セッション作成フロー', () => {
       await submitButton.click()
 
       // 会議ページへ遷移したことを確認
-      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/)
+      await expect(page).toHaveURL(/\/meeting\/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/)
 
       // 会議ページの基本要素を確認
       await expect(page.locator('header')).toBeVisible()

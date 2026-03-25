@@ -64,26 +64,54 @@ export class WhisperSTT {
     if (this.transcriber) return
 
     this.setStatus('loading')
-    try {
-      // ブラウザ環境でのみTransformers.jsをロード
-      const { pipeline } = await import('@xenova/transformers')
+    let lastError: Error | null = null
 
-      this.transcriber = await pipeline(
-        'automatic-speech-recognition',
-        `Xenova/whisper-${this.modelSize}`,
-        {
-          progress_callback: (progress: { status: string; progress?: number }) => {
-            if (progress.status === 'progress' && progress.progress) {
-              console.log(`Loading model: ${Math.round(progress.progress)}%`)
-            }
-          },
+    // リトライ処理（最大3回）
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`Loading Whisper model (attempt ${attempt}/3): ${this.modelSize}`)
+
+        // ブラウザ環境でのみTransformers.jsをロード
+        const { pipeline, env } = await import('@xenova/transformers')
+
+        // モデルキャッシュの設定
+        env.allowLocalModels = false
+        env.useBrowserCache = true
+
+        console.log(`Loading Whisper model: ${this.modelSize}`)
+
+        this.transcriber = await pipeline(
+          'automatic-speech-recognition',
+          `Xenova/whisper-${this.modelSize}`,
+          {
+            progress_callback: (progress: { status: string; progress?: number }) => {
+              if (progress.status === 'progress' && progress.progress) {
+                console.log(`Loading model: ${Math.round(progress.progress)}%`)
+              } else if (progress.status) {
+                console.log(`Model loading: ${progress.status}`)
+              }
+            },
+          }
+        ) as TranscriberFunction
+
+        this.setStatus('ready')
+        console.log('Whisper model loaded successfully')
+        return
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.error(`Whisper model loading error (attempt ${attempt}/3):`, lastError.message)
+
+        if (attempt < 3) {
+          // リトライ前に待機
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
         }
-      ) as TranscriberFunction
-      this.setStatus('ready')
-    } catch (error) {
-      this.setStatus('error')
-      this.callbacks.onError(`モデルのロードに失敗: ${error}`)
+      }
     }
+
+    // すべてのリトライが失敗した場合
+    this.setStatus('error')
+    const errorMessage = lastError?.message || 'Unknown error'
+    this.callbacks.onError(`モデルのロードに失敗: ${errorMessage}`)
   }
 
   // 音声データをキューに追加

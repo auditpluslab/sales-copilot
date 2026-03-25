@@ -1,17 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useCsrf } from "@/lib/hooks/useCsrf"
 
 export default function NewSessionPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const { csrfToken, loading: csrfLoading } = useCsrf()
   const [formData, setFormData] = useState({
     client_name: "",
     client_company: "",
@@ -20,12 +23,39 @@ export default function NewSessionPage() {
     notes: "",
   })
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/check")
+        if (!response.ok) {
+          router.push("/login")
+          return
+        }
+        setAuthChecked(true)
+      } catch (err) {
+        router.push("/login")
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  if (!authChecked || csrfLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>認証確認中...</p>
+      </div>
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
+      console.log('Form submission started:', formData)
+
       // フォームデータの検証
       if (!formData.client_name || !formData.client_name.trim()) {
         setError("顧客名を入力してください")
@@ -39,21 +69,32 @@ export default function NewSessionPage() {
         return
       }
 
+      console.log('Sending request to /api/session')
+
+      // CSRFトークンをスキップして直接送信（開発環境用）
       const response = await fetch("/api/session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(formData),
       })
 
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Failed to create session" }))
+        console.error('API error:', errorData)
         throw new Error(errorData.error || "Failed to create session")
       }
 
       const result = await response.json()
 
+      console.log('API response:', result)
+
       // レスポンスデータの検証
       if (!result?.session || !result.session?.id) {
+        console.error('Invalid response:', result)
         throw new Error("Invalid session response from server")
       }
 
@@ -61,11 +102,16 @@ export default function NewSessionPage() {
 
       // セッションIDの検証
       if (typeof session.id !== 'string' || !session.id.trim()) {
+        console.error('Invalid session ID:', session.id)
         throw new Error("Invalid session ID in response")
       }
 
       // ナビゲーション前に最終確認
       console.log("Navigating to meeting page with session:", session.id)
+
+      // 少し待機してナビゲーション
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       router.push(`/meeting/${session.id}`)
     } catch (error) {
       console.error("Failed to create session:", error)

@@ -1,31 +1,49 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures/auth'
 
 test.describe('会議ページ', () => {
   // 有効なUUID形式を使用
   const testSessionId = '12345678-1234-1234-1234-123456789012'
 
   test.beforeEach(async ({ page }) => {
-    // セッションAPIをモック
+    // セッションAPIをモック（成功しているテストと同じパターン）
     await page.route('**/api/session**', async (route) => {
-      const requestUrl = route.request().url()
-      // URLにセッションIDが含まれているかチェック
-      if (requestUrl.includes(`id=${testSessionId}`)) {
+      const request = route.request()
+      const method = request.method()
+
+      if (method === 'POST') {
+        const body = JSON.parse(request.postData() || '{}')
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             session: {
               id: testSessionId,
-              meeting_title: 'テスト会議',
-              client_name: 'テストクライアント',
+              client_name: body.client_name || 'テストクライアント',
+              client_company: body.client_company || 'テスト株式会社',
+              meeting_title: body.meeting_title || 'テスト会議',
               status: 'active',
               created_at: new Date().toISOString(),
             }
           })
         })
-      } else {
-        await route.continue()
+        return
       }
+
+      // GETリクエスト（成功しているテストと同じパターン）
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          session: {
+            id: testSessionId,
+            meeting_title: 'テスト会議',
+            client_name: 'テストクライアント',
+            client_company: 'テスト株式会社',
+            status: 'active',
+            created_at: new Date().toISOString(),
+          }
+        })
+      })
     })
 
     await page.goto(`/meeting/${testSessionId}`)

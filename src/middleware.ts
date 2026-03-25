@@ -18,7 +18,14 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
 const RATE_LIMIT = {
   windowMs: 60 * 1000, // 1分
-  maxRequests: 100, // 1分間の最大リクエスト数
+  maxRequests: 60, // 1分間の最大リクエスト数（100から60に厳格化）
+}
+
+// 認証関連のレート制限（より厳格）
+const authRateLimit = new Map<string, { count: number; resetTime: number }>()
+const AUTH_RATE_LIMIT = {
+  windowMs: 60 * 1000, // 15分
+  maxRequests: 5, // 15分間の最大リクエスト数
 }
 
 export function middleware(request: NextRequest) {
@@ -51,7 +58,7 @@ export function middleware(request: NextRequest) {
   // 2. セキュリティヘッダーの追加
   response.headers.set('X-DNS-Prefetch-Control', 'false')
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN')
+  response.headers.set('X-Frame-Options', 'DENY') // SAMEORIGINからDENYに変更
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()')
@@ -60,13 +67,37 @@ export function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.openai.com https://api.deepgram.com; frame-ancestors 'self';"
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https:",
+        "connect-src 'self' https://rustzicvyquandgurisd.supabase.co https://open.bigmodel.cn wss://rustzicvyquandgurisd.supabase.co",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "upgrade-insecure-requests",
+      ].join('; ')
     )
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   } else {
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'self' 'unsafe-eval' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* https://api.openai.com https://api.deepgram.com ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'self';"
+      [
+        "default-src 'self' 'unsafe-eval' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https: http://localhost:*",
+        "connect-src 'self' http://localhost:* https://rustzicvyquandgurisd.supabase.co https://open.bigmodel.cn ws://localhost:* wss://rustzicvyquandgurisd.supabase.co ws://127.0.0.1:*",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "frame-ancestors 'self'",
+        "upgrade-insecure-requests",
+      ].join('; ')
     )
   }
 
@@ -75,30 +106,58 @@ export function middleware(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') || 'unknown'
     const now = Date.now()
 
-    // 古いエントリをクリーンアップ
-    for (const [key, value] of rateLimit.entries()) {
-      if (now > value.resetTime) {
-        rateLimit.delete(key)
+    // 認証エンドポイントにはより厳格なレート制限
+    if (request.nextUrl.pathname.startsWith('/api/auth')) {
+      // 古いエントリをクリーンアップ
+      for (const [key, value] of authRateLimit.entries()) {
+        if (now > value.resetTime) {
+          authRateLimit.delete(key)
+        }
       }
-    }
 
-    // リクエストカウント
-    const limit = rateLimit.get(ip)
-    if (limit) {
-      if (now > limit.resetTime) {
-        // ウィンドウがリセットされた
-        rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT.windowMs })
-      } else if (limit.count >= RATE_LIMIT.maxRequests) {
-        // レート制限超過
-        return NextResponse.json(
-          { error: 'Too many requests' },
-          { status: 429, headers: response.headers }
-        )
+      // 認証リクエストカウント
+      const authLimit = authRateLimit.get(ip)
+      if (authLimit) {
+        if (now > authLimit.resetTime) {
+          authRateLimit.set(ip, { count: 1, resetTime: now + AUTH_RATE_LIMIT.windowMs })
+        } else if (authLimit.count >= AUTH_RATE_LIMIT.maxRequests) {
+          return NextResponse.json(
+            { error: 'Too many authentication attempts. Please try again later.' },
+            { status: 429, headers: response.headers }
+          )
+        } else {
+          authLimit.count++
+        }
       } else {
-        limit.count++
+        authRateLimit.set(ip, { count: 1, resetTime: now + AUTH_RATE_LIMIT.windowMs })
       }
     } else {
-      rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT.windowMs })
+      // 通常のAPIエンドポイントのレート制限
+      // 古いエントリをクリーンアップ
+      for (const [key, value] of rateLimit.entries()) {
+        if (now > value.resetTime) {
+          rateLimit.delete(key)
+        }
+      }
+
+      // リクエストカウント
+      const limit = rateLimit.get(ip)
+      if (limit) {
+        if (now > limit.resetTime) {
+          // ウィンドウがリセットされた
+          rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT.windowMs })
+        } else if (limit.count >= RATE_LIMIT.maxRequests) {
+          // レート制限超過
+          return NextResponse.json(
+            { error: 'Too many requests' },
+            { status: 429, headers: response.headers }
+          )
+        } else {
+          limit.count++
+        }
+      } else {
+        rateLimit.set(ip, { count: 1, resetTime: now + RATE_LIMIT.windowMs })
+      }
     }
   }
 

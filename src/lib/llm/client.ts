@@ -33,7 +33,7 @@ export async function chatCompletion(
   }
 
   const response = await llmClient.chat.completions.create({
-    model: options?.model || "glm-4-flash",
+    model: options?.model || "glm-5",
     messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
     temperature: options?.temperature ?? 0.3,
     max_tokens: options?.maxTokens ?? 2000,
@@ -57,7 +57,7 @@ export async function structuredOutput<T>(
   const schemaDescription = JSON.stringify(schema)
 
   const response = await llmClient.chat.completions.create({
-    model: options?.model || "glm-4-flash",
+    model: options?.model || "glm-5",
     messages: [
       {
         role: "system",

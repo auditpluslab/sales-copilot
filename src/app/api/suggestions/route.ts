@@ -42,7 +42,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 文字起こしテキストがある場合は、LLMを使って提案を生成
+    // 認証チェックをLLM呼び出しの前に移動（認証バイパス脆弱性の修正）
     if (transcriptText.length > 50) {
+      const userId = await getUserId()
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        )
+      }
       console.log('[Suggestions] Generating suggestions from transcript using LLM')
       try {
         // インサイトを生成

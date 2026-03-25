@@ -2,37 +2,65 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
+import { useCsrf } from "@/lib/hooks/useCsrf"
 import type { Session } from "@/types"
 
 export default function HomePage() {
+  const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const { csrfToken } = useCsrf()
 
   useEffect(() => {
-    const fetchSessions = async () => {
+    const checkAuth = async () => {
       try {
-        const response = await fetch("/api/session")
-        if (response.ok) {
-          const data = await response.json()
-          setSessions(data.sessions || [])
-        } else {
-          setError("セッションの取得に失敗しました")
+        const response = await fetch("/api/auth/check")
+        if (!response.ok) {
+          router.push("/login")
+          return
         }
+
+        const fetchSessions = async () => {
+          try {
+            const response = await fetch("/api/session")
+            if (response.ok) {
+              const data = await response.json()
+              setSessions(data.sessions || [])
+            } else {
+              setError("セッションの取得に失敗しました")
+            }
+          } catch (err) {
+            setError("セッションの取得に失敗しました")
+            console.error(err)
+          } finally {
+            setLoading(false)
+          }
+        }
+
+        setAuthChecked(true)
+        fetchSessions()
       } catch (err) {
-        setError("セッションの取得に失敗しました")
-        console.error(err)
-      } finally {
-        setLoading(false)
+        router.push("/login")
       }
     }
 
-    fetchSessions()
-  }, [])
+    checkAuth()
+  }, [router])
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -55,9 +83,26 @@ export default function HomePage() {
             <h1 className="text-3xl font-bold text-gray-900">営業会議コパイロット</h1>
             <p className="text-gray-600 mt-1">リアルタイムで会議を支援</p>
           </div>
-          <Link href="/session/new">
-            <Button>新しいセッション</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/session/new">
+              <Button>新しいセッション</Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await fetch("/api/auth/logout", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...(csrfToken && { "X-CSRF-Token": csrfToken }),
+                  },
+                })
+                router.push("/login")
+              }}
+            >
+              ログアウト
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4">

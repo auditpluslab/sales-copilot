@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createBrowserSTTConnection, STTConnection } from "./client"
+import { getAccessToken } from "@/lib/auth"
 import type { TranscriptSegment, STTStatus } from "@/types"
+import type { SpeechLanguage } from "./web-speech-client"
 
 interface UseSTTOptions {
   sessionId: string
+  userId?: string | null
   autoConnect?: boolean
 }
 
@@ -17,14 +20,19 @@ interface UseSTTReturn {
   disconnect: () => void
   sendAudio: (data: ArrayBuffer) => void
   clearSegments: () => void
+  errorMessage: string | null
+  language: SpeechLanguage
+  setLanguage: (language: SpeechLanguage) => void
 }
 
 export function useSTT(options: UseSTTOptions): UseSTTReturn {
-  const { sessionId, autoConnect = false } = options
+  const { sessionId, userId, autoConnect = false } = options
 
   const [status, setStatus] = useState<STTStatus>("disconnected")
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
   const [isConnecting, setIsConnecting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [language, setLanguageState] = useState<SpeechLanguage>('ja-JP')
 
   const connectionRef = useRef<STTConnection | null>(null)
 
@@ -44,7 +52,7 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
         setIsConnecting(false)
         connectionRef.current = null
       },
-      onTranscript: (segment) => {
+      onTranscript: async (segment) => {
         setSegments((prev) => {
           if (segment.is_final) {
             // 最終結果として追加
@@ -58,11 +66,46 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
             return [...prev, segment]
           }
         })
+
+        // 最終結果のみSupabase Functionに送信
+        if (segment.is_final) {
+          try {
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+            const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+            if (supabaseUrl && supabaseAnonKey && userId) {
+              const functionUrl = `${supabaseUrl}/functions/v1/transcript-received`
+
+              await fetch(functionUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "apikey": supabaseAnonKey,
+                },
+                body: JSON.stringify({
+                  sessionId,
+                  userId,
+                  segment: {
+                    id: segment.id,
+                    ts_start: segment.ts_start,
+                    ts_end: segment.ts_end,
+                    text: segment.text,
+                    is_final: segment.is_final,
+                    speaker: segment.speaker,
+                  },
+                }),
+              })
+            }
+          } catch (error) {
+            console.error("Failed to save transcript:", error)
+          }
+        }
       },
       onError: (error) => {
         console.error("STT error:", error)
         setStatus("error")
         setIsConnecting(false)
+        setErrorMessage(error.message)
       },
     })
 
@@ -94,6 +137,14 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
     setSegments([])
   }, [])
 
+  const setLanguage = useCallback((newLanguage: SpeechLanguage) => {
+    setLanguageState(newLanguage)
+    if (connectionRef.current && connectionRef.current.setLanguage) {
+      connectionRef.current.setLanguage(newLanguage)
+      console.log('Language changed to:', newLanguage)
+    }
+  }, [])
+
   useEffect(() => {
     if (autoConnect) {
       connect()
@@ -111,6 +162,9 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
     disconnect,
     sendAudio,
     clearSegments,
+    errorMessage,
+    language,
+    setLanguage,
   }
 }
 

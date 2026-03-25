@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/db/supabase"
-import { inngest } from "@/lib/inngest/client"
 
 // POST /api/session/complete - セッション完了処理
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
     const body = await request.json()
     const { session_id } = body
 
@@ -16,27 +14,53 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // セッション状態を更新
-    const { error: updateError } = await supabase
-      .from("sessions")
-      .update({
-        status: "completed",
-        ended_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", session_id)
+    // JWTトークンを取得
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (!session) {
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      )
     }
 
-    // Inngestイベントを送信
-    await inngest.send({
-      name: "session/completed",
-      data: { session_id },
+    const accessToken = session.access_token
+    const userId = session.user.id
+
+    // Supabase Edge Functionを呼び出す
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { error: "Supabase configuration missing" },
+        { status: 500 }
+      )
+    }
+
+    const functionUrl = `${supabaseUrl}/functions/v1/session-ended`
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseAnonKey,
+      },
+      body: JSON.stringify({ sessionId: session_id, userId }),
     })
 
-    return NextResponse.json({ success: true })
+    if (!response.ok) {
+      const error = await response.text()
+      console.error("Supabase Function error:", error)
+      return NextResponse.json(
+        { error: "Failed to complete session" },
+        { status: response.status }
+      )
+    }
+
+    const data = await response.json()
+    return NextResponse.json(data)
   } catch (error) {
     console.error("Failed to complete session:", error)
     return NextResponse.json(

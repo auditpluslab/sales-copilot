@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "sb-access-token",
+      "value": "test-mock-access-token",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sb-refresh-token",
+      "value": "test-mock-refresh-token",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "csrf_token",
+      "value": "1774369624120.TFrHVKo9KjjLmumqwueM5RAdzuTUPzf7.9212a3191138ca0f066ef948486b5bdd61153722f6da1659378945c2e3b2c8e7",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1774371424.123168,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Strict"
+    }
+  ],
+  "origins": []
+}

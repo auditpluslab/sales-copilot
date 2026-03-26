@@ -92,10 +92,10 @@ test.describe('会議ページ MVP', () => {
 
   test('提案がメインコンテンツとして表示される', async ({ page }) => {
     // 質問セクションが表示される
-    await expect(page.locator('h2:has-text("次に聞くべき質問")')).toBeVisible()
+    await expect(page.locator('h3:has-text("次に聞くべき質問")')).toBeVisible()
 
     // 提案カードセクションが表示される
-    await expect(page.locator('h2:has-text("提案カード")')).toBeVisible()
+    await expect(page.locator('h3:has-text("提案カード")')).toBeVisible()
 
     // 質問が表示される
     await expect(page.locator('p:has-text("導入の目的と期待される効果")')).toBeVisible()
@@ -115,7 +115,7 @@ test.describe('会議ページ MVP', () => {
 
     // 接続状態時は2つのインジケーター（質問と提案セクション）が表示される
     // このテストではHTML構造のみ確認
-    await expect(page.locator('text:has-text("10秒ごとに更新中...")').isVisible()
+    await expect(page.locator('text=10秒ごとに更新中...')).toBeVisible()
   })
 
   test('API失敗時にエラー状態と再読み込みボタンが表示される', async ({ page }) => {
@@ -132,7 +132,7 @@ test.describe('会議ページ MVP', () => {
     await page.reload()
 
     // エラーメッセージが表示される
-    await expect(page.locator('p:has-text("エラーが発生しました")').toBeVisible()
+    await expect(page.locator('p:has-text("エラーが発生しました")')).toBeVisible()
 
     // 再読み込みボタンが表示される
     await expect(page.locator('button:has-text("再読み込み")')).toBeVisible()
@@ -181,7 +181,7 @@ test.describe('会議ページ MVP', () => {
     await page.click('button:has-text("再読み込み")')
 
     // 提案が再表示される（またはエラーが解消される）
-    await expect(page.locator('p:has-text("更新後の質問")').toBeVisible()
+    await expect(page.locator('p:has-text("更新後の質問")')).toBeVisible()
   })
 
   test('会議終了ボタンが正常に動作する', async ({ page }) => {

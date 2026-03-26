@@ -79,7 +79,14 @@ ${JSON.stringify(existingInsight, null, 2)}
     },
   ])
 
-  return JSON.parse(result.content || "{}") as Insight
+  // LLMの出力からMarkdownコードブロックを取り除く
+  let content = result.content || "{}"
+  // Markdownのコードブロックを削除（```json ... ```）
+  content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '')
+  // 余分な空白を削除
+  content = content.trim()
+
+  return JSON.parse(content) as Insight
 }
 
 export function extractPainPoints(text: string): PainPoint[] {

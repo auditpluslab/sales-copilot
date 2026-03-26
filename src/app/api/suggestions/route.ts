@@ -42,7 +42,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 文字起こしテキストがある場合は、LLMを使って提案を生成
-    if (transcriptText.length > 50) {
+    // 開発環境でもNEXT_PUBLIC_USE_LLM_IN_DEV=trueならLLMを使う
+    const useLlmInDev = process.env.NODE_ENV === "production" ||
+                        request.headers.get('x-use-llm') === 'true' ||
+                        process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
+
+    if (transcriptText.length > 50 && useLlmInDev) {
       // 開発環境では認証チェックをスキップ
       const userId = process.env.NODE_ENV === "production" ? await getUserId() : "test-user-id"
       if (process.env.NODE_ENV === "production" && !userId) {
@@ -52,6 +57,8 @@ export async function GET(request: NextRequest) {
         )
       }
       console.log('[Suggestions] Generating suggestions from transcript using LLM')
+      console.log('[Suggestions] Transcript length:', transcriptText.length)
+      console.log('[Suggestions] Client ID:', clientId)
       try {
         // インサイトを生成
         const insight = await generateInsight(transcriptText, null)

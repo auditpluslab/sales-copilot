@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSTT, useTranscriptSegments } from "@/lib/stt/hooks"
 import { LANGUAGE_OPTIONS } from "@/lib/stt/web-speech-client"
+import { useToast } from "@/components/ui/use-toast"
 import type { SuggestionCard, DeepDiveQuestion, Session } from "@/types"
 
 // デバッグフラグ - 本番環境ではfalse
@@ -17,6 +19,7 @@ export default function MeetingPage() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.id as string
+  const { toast } = useToast()
 
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -24,6 +27,21 @@ export default function MeetingPage() {
     questions: DeepDiveQuestion[]
     proposals: SuggestionCard[]
   } | null>(null)
+
+  // ピン留めしたアイテム（最大20件）
+  const [pinnedItems, setPinnedItems] = useState<{
+    questions: DeepDiveQuestion[]
+    proposals: SuggestionCard[]
+  }>({ questions: [], proposals: [] })
+
+  // 履歴（全てのアイテム、最大100件）
+  const [history, setHistory] = useState<{
+    questions: DeepDiveQuestion[]
+    proposals: SuggestionCard[]
+  }>({ questions: [], proposals: [] })
+
+  // アクティブタブ
+  const [activeTab, setActiveTab] = useState<"pinned" | "history">("pinned")
   const [sttError, setSttError] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
@@ -38,6 +56,46 @@ export default function MeetingPage() {
   const refreshSuggestionsRef = useRef<(() => Promise<void>) | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const previousSuggestionsRef = useRef<{
+    questions: DeepDiveQuestion[]
+    proposals: SuggestionCard[]
+  }>({ questions: [], proposals: [] })
+
+  // ピン留めトグル関数（最大20件）
+  const togglePin = useCallback((type: "question" | "proposal", item: DeepDiveQuestion | SuggestionCard) => {
+    // バリデーション
+    if (!item?.id) {
+      console.warn('[togglePin] Invalid item: missing id', item)
+      return
+    }
+
+    setPinnedItems(prev => {
+      const targetType = type === "question" ? "questions" : "proposals"
+      const targetArray = prev[targetType]
+      const exists = targetArray.some(i => i.id === item.id)
+
+      if (exists) {
+        // ピン留め解除
+        return {
+          ...prev,
+          [targetType]: targetArray.filter(i => i.id !== item.id),
+        }
+      } else {
+        // ピン留め追加（最大20件、古い順に解除）
+        const MAX_PINNED = 20
+        return {
+          ...prev,
+          [targetType]: [...targetArray, item].slice(-MAX_PINNED),
+        }
+      }
+    })
+  }, [])
+
+  // アイテムがピン留めされているかチェック
+  const isPinned = useCallback((type: "question" | "proposal", id: string) => {
+    const targetArray = type === "question" ? pinnedItems.questions : pinnedItems.proposals
+    return targetArray.some(i => i.id === id)
+  }, [pinnedItems])
 
   // 認証チェックとuserId取得
   useEffect(() => {
@@ -196,7 +254,26 @@ export default function MeetingPage() {
 
       // 文字起こしの統計情報を計算（常に最新のセグメントを取得）
       const currentSegments = getFinalSegments()
-      const transcriptText = currentSegments.map(s => s.text).join(' ')
+      let transcriptText = currentSegments.map(s => s.text).join(' ')
+
+      // 開発環境でLLMをテストするためのダミーデータ
+      const useDevLlm = process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
+      if (useDevLlm && transcriptText.length < 50) {
+        transcriptText = `
+営業担当者: 本日は御社の業務効率化についてお話しさせてください。まずは、現在の課題から教えていただけますか？
+
+クライアント: はい、現在大きく2つの課題があります。1つ目は、営業案件の管理がExcelで行っていて、進捗の可視化ができていないこと。もう1つは、見積もりの作成に時間がかかっているんです。
+
+営業担当者: 具体的には、どのくらいの時間がかかっていますか？
+
+クライアント: 見積もり作成だけで1件あたり2時間程度かかっています。月に20件ほど作成していて、そのうち40時間くらいを使っている計算になります。
+
+営業担当者: なるほど、40時間ですか。予算の枠はどの程度お考えですか？
+
+クライアント: 今のところ年間300万円程度を考えていますが、効果が見えれば拡大しても良いと思っています。
+        `.trim()
+      }
+
       const stats = {
         totalSegments: currentSegments.length,
         totalLength: transcriptText.length,
@@ -204,6 +281,7 @@ export default function MeetingPage() {
       }
 
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
+      if (useDevLlm) console.log('[refreshSuggestions] Using dev LLM mode, transcript length:', transcriptText.length)
 
       // 統計情報と文字起こしテキストを含めてAPIを呼び出す
       const statsParam = encodeURIComponent(JSON.stringify(stats))
@@ -213,9 +291,99 @@ export default function MeetingPage() {
       const response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}${clientIdParam}`)
       if (response.ok) {
         const data = await response.json()
-        if (data?.suggestions && typeof data.suggestions === 'object') {
-          if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', data.suggestions.questions?.length, 'questions')
-          setSuggestions(data.suggestions)
+        // suggestionsがnullまたはundefinedの場合、空のオブジェクトを使用
+        const newSuggestions = (data?.suggestions && typeof data.suggestions === 'object')
+          ? data.suggestions
+          : { questions: [], proposals: [] }
+          if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', newSuggestions.questions?.length, 'questions')
+
+          // 前回の提案と比較して新しいアイテムを検出
+          const prevQuestions = previousSuggestionsRef.current.questions || []
+          const prevProposals = previousSuggestionsRef.current.proposals || []
+          const newQuestions = newSuggestions.questions || []
+          const newProposals = newSuggestions.proposals || []
+
+          // 新しい質問を検出
+          const newQuestionsItems = newQuestions.filter((q: DeepDiveQuestion) =>
+            !prevQuestions.some((pq: DeepDiveQuestion) => pq.id === q.id)
+          )
+
+          // 新しい提案を検出
+          const newProposalsItems = newProposals.filter((p: SuggestionCard) =>
+            !prevProposals.some((pp: SuggestionCard) => pp.id === p.id)
+          )
+
+          // 新しい質問をトースト通知
+          newQuestionsItems.forEach((q: DeepDiveQuestion) => {
+            const { dismiss } = toast({
+              title: "💡 新しい質問",
+              description: q.question,
+              action: (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    togglePin("question", q)
+                    dismiss()
+                  }}
+                  className="mt-2"
+                >
+                  ピン留め
+                </Button>
+              ),
+            })
+          })
+
+          // 新しい提案をトースト通知
+          newProposalsItems.forEach((p: SuggestionCard) => {
+            const { dismiss } = toast({
+              title: "📋 新しい提案",
+              description: p.title,
+              action: (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    togglePin("proposal", p)
+                    dismiss()
+                  }}
+                  className="mt-2"
+                >
+                  ピン留め
+                </Button>
+              ),
+            })
+          })
+
+          // priorityが3以上の質問とconfidenceがhighの提案を自動ピン留め
+          const autoPinQuestions = newQuestionsItems.filter((q: DeepDiveQuestion) => q.priority >= 3)
+          const autoPinProposals = newProposalsItems.filter((p: SuggestionCard) => p.confidence === "high")
+
+          if (autoPinQuestions.length > 0) {
+            setPinnedItems(prev => ({
+              ...prev,
+              questions: [...prev.questions, ...autoPinQuestions],
+            }))
+          }
+
+          if (autoPinProposals.length > 0) {
+            setPinnedItems(prev => ({
+              ...prev,
+              proposals: [...prev.proposals, ...autoPinProposals],
+            }))
+          }
+
+          // 履歴に追加（最大100件）
+          setHistory(prev => ({
+            questions: [...newQuestions, ...prev.questions].slice(0, 100),
+            proposals: [...newProposals, ...prev.proposals].slice(0, 100),
+          }))
+
+          // 提案を更新
+          setSuggestions(newSuggestions)
+
+          // 前回の提案を保存
+          previousSuggestionsRef.current = newSuggestions
         }
       } else {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
@@ -226,7 +394,7 @@ export default function MeetingPage() {
     } finally {
       setIsLoadingSuggestions(false)
     }
-  }, [sessionId, getFinalSegments, session])
+  }, [sessionId, getFinalSegments, session, toast, togglePin])
 
   // refを更新（triggerAnalysisが常に最新の関数を呼び出せるように）
   useEffect(() => {
@@ -433,7 +601,7 @@ export default function MeetingPage() {
         </div>
       </header>
 
-      {/* メインコンテンツ - 提案メイン表示 */}
+      {/* メインコンテンツ - タブで表示切り替え */}
       <div className="flex-1 overflow-auto bg-gray-50 p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* エラー状態 */}
@@ -458,80 +626,169 @@ export default function MeetingPage() {
             </Card>
           )}
 
-          {/* 次に聞くべき質問 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">💡 次に聞くべき質問</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {suggestions?.questions && suggestions.questions.length > 0 ? (
-                <ul className="space-y-3">
-                  {suggestions.questions.map((q, i) => (
-                    <li key={i} className="bg-gray-50 rounded p-3">
-                      <p className="font-medium text-sm">{q.question}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        理由: {q.intent}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-400 text-center py-4">
-                  会議を開始すると質問が表示されます
-                </p>
-              )}
+          {/* タブ切り替え */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pinned" | "history")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="pinned">
+                📌 ピン留め ({pinnedItems.questions.length + pinnedItems.proposals.length})
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                📚 履歴 ({history.questions.length + history.proposals.length})
+              </TabsTrigger>
+            </TabsList>
 
-              {/* 更新インジケーター */}
-              <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  <span>10秒ごとに更新中...</span>
-                  {isLoadingSuggestions && <span>（更新中）</span>}
-                </div>
-            </CardContent>
-          </Card>
+            {/* ピン留めタブ */}
+            <TabsContent value="pinned" className="space-y-6 mt-6">
+              {/* ピン留めした質問 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">💡 ピン留めした質問</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pinnedItems.questions.length > 0 ? (
+                    <ul className="space-y-3">
+                      {pinnedItems.questions.map((q) => (
+                        <li key={q.id} className="bg-blue-50 border border-blue-200 rounded p-3 relative">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute top-2 right-2 h-6 w-6 p-0"
+                            onClick={() => togglePin("question", q)}
+                          >
+                            ✕
+                          </Button>
+                          <p className="font-medium text-sm pr-8">{q.question}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            理由: {q.intent}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-400 text-center py-4">
+                      ピン留めした質問はありません
+                      <br />
+                      <span className="text-xs">トースト通知の「ピン留め」ボタンで追加できます</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* 提案カード */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">📋 提案カード</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {suggestions?.proposals && suggestions.proposals.length > 0 ? (
-                <ul className="space-y-3">
-                  {suggestions.proposals.map((p, i) => (
-                    <li key={i} className="border rounded p-3">
-                      <div className="flex justify-between items-start">
-                        <p className="font-medium text-sm">{p.title}</p>
-                        <Badge
-                          variant={p.confidence === "high" ? "default" : "secondary"}
-                        >
-                          {p.confidence === "high" ? "高確度" : p.confidence === "medium" ? "中確度" : "低確度"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{p.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-400 text-center py-4">
-                  会議を開始すると提案が表示されます
-                </p>
-              )}
+              {/* ピン留めした提案 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">📋 ピン留めした提案</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pinnedItems.proposals.length > 0 ? (
+                    <ul className="space-y-3">
+                      {pinnedItems.proposals.map((p) => (
+                        <li key={p.id} className="bg-blue-50 border border-blue-200 rounded p-3 relative">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute top-2 right-2 h-6 w-6 p-0"
+                            onClick={() => togglePin("proposal", p)}
+                          >
+                            ✕
+                          </Button>
+                          <div className="flex justify-between items-start pr-8">
+                            <p className="font-medium text-sm">{p.title}</p>
+                            <Badge
+                              variant={p.confidence === "high" ? "default" : "secondary"}
+                            >
+                              {p.confidence === "high" ? "高確度" : p.confidence === "medium" ? "中確度" : "低確度"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{p.body}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-400 text-center py-4">
+                      ピン留めした提案はありません
+                      <br />
+                      <span className="text-xs">トースト通知の「ピン留め」ボタンで追加できます</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* 更新インジケーター */}
-              <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  <span>10秒ごとに更新中...</span>
-                  {isLoadingSuggestions && <span>（更新中）</span>}
-                </div>
-            </CardContent>
-          </Card>
+            {/* 履歴タブ */}
+            <TabsContent value="history" className="space-y-6 mt-6">
+              {/* 履歴質問 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">💡 質問の履歴</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {history.questions.length > 0 ? (
+                    <ul className="space-y-3">
+                      {history.questions.map((q) => (
+                        <li key={q.id} className="bg-gray-50 rounded p-3 relative">
+                          {isPinned("question", q.id) && (
+                            <span className="absolute top-2 right-2 text-blue-500 text-xs">📌</span>
+                          )}
+                          <p className="font-medium text-sm pr-8">{q.question}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            理由: {q.intent}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-400 text-center py-4">
+                      まだ質問がありません
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 履歴提案 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">📋 提案の履歴</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {history.proposals.length > 0 ? (
+                    <ul className="space-y-3">
+                      {history.proposals.map((p) => (
+                        <li key={p.id} className="bg-gray-50 rounded p-3 relative">
+                          {isPinned("proposal", p.id) && (
+                            <span className="absolute top-2 right-2 text-blue-500 text-xs">📌</span>
+                          )}
+                          <div className="flex justify-between items-start pr-8">
+                            <p className="font-medium text-sm">{p.title}</p>
+                            <Badge
+                              variant={p.confidence === "high" ? "default" : "secondary"}
+                            >
+                              {p.confidence === "high" ? "高確度" : p.confidence === "medium" ? "中確度" : "低確度"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">{p.body}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-400 text-center py-4">
+                      まだ提案がありません
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          {/* 更新インジケーター */}
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span>10秒ごとに更新中...</span>
+            {isLoadingSuggestions && <span>（更新中）</span>}
+          </div>
 
           {/* 手動更新ボタン */}
           <div className="flex justify-center">
@@ -540,7 +797,7 @@ export default function MeetingPage() {
               onClick={refreshSuggestions}
               disabled={isLoadingSuggestions}
             >
-              {isLoadingSuggestions ? "更新中..." : "更新"}
+              {isLoadingSuggestions ? "更新中..." : "🔄 手動更新"}
             </Button>
           </div>
         </div>

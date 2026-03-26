@@ -81,7 +81,11 @@ ${transcriptText}
     },
   ])
 
-  return JSON.parse(result.content || "{}")
+  // LLMの出力からMarkdownコードブロックを取り除く
+  let content = result.content || "{}"
+  content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+  return JSON.parse(content)
 }
 
 // 提案テンプレートマッチング

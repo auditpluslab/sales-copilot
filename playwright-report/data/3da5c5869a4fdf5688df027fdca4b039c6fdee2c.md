@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "空テスト会議" [level=1] [ref=e5]
+        - paragraph [ref=e6]: テストクライアント
+      - generic [ref=e7]:
+        - combobox [ref=e8] [cursor=pointer]:
+          - generic: 日本語
+          - img [ref=e9]
+        - generic [ref=e11]: 未接続
+        - button "会議開始" [ref=e12] [cursor=pointer]
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - heading "💡 次に聞くべき質問" [level=3] [ref=e17]
+        - generic [ref=e18]:
+          - list [ref=e19]:
+            - listitem [ref=e20]:
+              - paragraph [ref=e21]: 導入の目的と期待される効果について具体的にお聞かせいただけますか？
+              - paragraph [ref=e22]: "理由: 導入目的の明確化"
+          - generic [ref=e27]: 10秒ごとに更新中...
+      - generic [ref=e28]:
+        - heading "📋 提案カード" [level=3] [ref=e30]
+        - generic [ref=e31]:
+          - list [ref=e32]:
+            - listitem [ref=e33]:
+              - generic [ref=e34]:
+                - paragraph [ref=e35]: 導入効果の試算
+                - generic [ref=e36]: 中確度
+              - paragraph [ref=e37]: 現在0件の発言があります。貴社の現状から想定される効果を試算します。
+          - generic [ref=e42]: 10秒ごとに更新中...
+      - button "更新" [ref=e44] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e50] [cursor=pointer]:
+    - img [ref=e51]
+  - alert [ref=e54]
+```

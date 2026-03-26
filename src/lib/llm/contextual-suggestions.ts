@@ -346,13 +346,17 @@ export async function generateContextualSuggestions(params: {
   })
 
   // 5. 結果をパース
-  const content = result.content || "{}"
+  let content = result.content || "{}"
+  // LLMの出力からMarkdownコードブロックを取り除く
+  content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
   let parsed: any
 
   try {
     parsed = JSON.parse(content)
   } catch (e) {
     console.error("[ContextualSuggestions] Failed to parse LLM response:", e)
+    console.error("[ContextualSuggestions] Content was:", content.substring(0, 200))
     // フォールバック
     parsed = {
       questions: [],

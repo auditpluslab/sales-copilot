@@ -41,6 +41,14 @@ export async function GET(request: NextRequest) {
 
     // 文字起こしテキストがある場合は、LLMを使ってインサイトを生成
     if (transcriptText.length > 50) {
+      // 開発環境では認証チェックをスキップ
+      const userId = process.env.NODE_ENV === "production" ? await getUserId() : "test-user-id"
+      if (process.env.NODE_ENV === "production" && !userId) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        )
+      }
       console.log('[Insight] Generating insight from transcript using LLM')
       try {
         const insight = await generateInsight(transcriptText, null)

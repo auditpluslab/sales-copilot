@@ -125,13 +125,13 @@ export class WebSpeechSTT {
       }
 
       this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error)
-
         // no-speechエラーは停止時や無音時に発生する可能性があるため、重大なエラーとして扱わない
         if (event.error === 'no-speech') {
-          console.log('No speech detected (this is normal when stopping or in silence)')
+          console.log('[Web Speech] No speech detected (this is normal when stopping or in silence)')
           return
         }
+
+        console.error('Speech recognition error:', event.error)
 
         // not-allowedエラーの場合は、許可を促すメッセージを表示
         if (event.error === 'not-allowed') {

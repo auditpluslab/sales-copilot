@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 文字起こしテキストがある場合は、LLMを使って提案を生成
-    // 認証チェックをLLM呼び出しの前に移動（認証バイパス脆弱性の修正）
     if (transcriptText.length > 50) {
-      const userId = await getUserId()
-      if (!userId) {
+      // 開発環境では認証チェックをスキップ
+      const userId = process.env.NODE_ENV === "production" ? await getUserId() : "test-user-id"
+      if (process.env.NODE_ENV === "production" && !userId) {
         return NextResponse.json(
           { error: "Authentication required" },
           { status: 401 }

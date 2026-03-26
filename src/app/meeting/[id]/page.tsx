@@ -269,7 +269,9 @@ export default function MeetingPage() {
       // 統計情報と文字起こしテキストを含めてAPIを呼び出す
       const statsParam = encodeURIComponent(JSON.stringify(stats))
       const transcriptParam = encodeURIComponent(transcriptText)
-      const response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}`)
+      const clientId = session?.client_id || ''
+      const clientIdParam = clientId ? `&client_id=${clientId}` : ''
+      const response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}${clientIdParam}`)
       if (response.ok) {
         const data = await response.json()
         if (data?.suggestions && typeof data.suggestions === 'object') {
@@ -280,7 +282,7 @@ export default function MeetingPage() {
     } catch (error) {
       console.error("Failed to fetch suggestions:", error)
     }
-  }, [sessionId, getFinalSegments])
+  }, [sessionId, getFinalSegments, session])
 
   // refを更新（triggerAnalysisが常に最新の関数を呼び出せるように）
   useEffect(() => {

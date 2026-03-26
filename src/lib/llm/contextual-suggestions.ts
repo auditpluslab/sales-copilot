@@ -436,7 +436,7 @@ function buildContextualPrompt(params: {
     // 特殊文字をエスケープしてプロンプトインジェクションを防止
     const escaped = stmt
       .replace(/"/g, '\\"')  // クォートをエスケープ
-      .replace(/\[/g, '\\['') // 角括弧をエスケープ
+      .replace(/\[/g, '\\[')  // 角括弧をエスケープ
       .replace(/\]/g, '\\]')
       .replace(/`/g, '\\`')   // バッククォートをエスケープ
       .substring(0, 200)      // 長さを制限

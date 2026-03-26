@@ -3,16 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSTT, useTranscriptSegments } from "@/lib/stt/hooks"
-import { getAccessToken } from "@/lib/auth"
 import { LANGUAGE_OPTIONS } from "@/lib/stt/web-speech-client"
-import type { Insight, SuggestionCard, DeepDiveQuestion, Session } from "@/types"
+import type { SuggestionCard, DeepDiveQuestion, Session } from "@/types"
+
+// デバッグフラグ - 本番環境ではfalse
+const DEBUG = process.env.NODE_ENV !== "production"
 
 export default function MeetingPage() {
   const params = useParams()
@@ -21,38 +20,13 @@ export default function MeetingPage() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [insight, setInsight] = useState<Insight | null>(null)
   const [suggestions, setSuggestions] = useState<{
     questions: DeepDiveQuestion[]
     proposals: SuggestionCard[]
   } | null>(null)
   const [sttError, setSttError] = useState<string | null>(null)
-  const [updateCounter, setUpdateCounter] = useState(0)
-
-  // insight/suggestionsの変更を監視（デバッグ用）
-  useEffect(() => {
-    if (insight) {
-      console.log('[State Update] Insight updated:', {
-        summary: insight.summary_text?.substring(0, 50),
-        painPoints: insight.pain_points?.length || 0,
-        constraints: insight.constraints?.length || 0,
-        stakeholders: insight.stakeholders?.length || 0
-      })
-      // 強制的に再描画をトリガー
-      setUpdateCounter(prev => prev + 1)
-    }
-  }, [insight])
-
-  useEffect(() => {
-    if (suggestions) {
-      console.log('[State Update] Suggestions updated:', {
-        questions: suggestions.questions?.length || 0,
-        proposals: suggestions.proposals?.length || 0
-      })
-      // 強制的に再描画をトリガー
-      setUpdateCounter(prev => prev + 1)
-    }
-  }, [suggestions])
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
 
   const {
     segments,
@@ -61,8 +35,6 @@ export default function MeetingPage() {
     getInterimSegment,
   } = useTranscriptSegments()
 
-  const transcriptEndRef = useRef<HTMLDivElement>(null)
-  const refreshInsightRef = useRef<(() => Promise<void>) | null>(null)
   const refreshSuggestionsRef = useRef<(() => Promise<void>) | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
@@ -168,11 +140,6 @@ export default function MeetingPage() {
     fetchSession()
   }, [sessionId, authChecked])
 
-  // 文字起こしを自動スクロール
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [segments])
-
   // STTのsegmentsをtranscript segmentsに追加
   useEffect(() => {
     sttSegments.forEach((segment) => {
@@ -182,7 +149,7 @@ export default function MeetingPage() {
       // 重複を避けるために、既存のsegmentsに含まれていない場合のみ追加
       const exists = segments.some((s) => s.id === segment.id)
       if (!exists) {
-        console.log(`[Adding Final Segment] "${segment.text}" (${segment.text.length}文字)`)
+        if (DEBUG) console.log(`[Adding Final Segment] "${segment.text}" (${segment.text.length}文字)`)
         addSegment(segment)
       }
     })
@@ -204,8 +171,7 @@ export default function MeetingPage() {
 
       // 少し遅延させてから更新（複数セグメントが連続して追加される場合の対応）
       setTimeout(() => {
-        console.log('[Delayed Update] Calling refreshInsight/refreshSuggestions')
-        refreshInsightRef.current?.()
+        if (DEBUG) console.log('[Delayed Update] Calling refreshSuggestions')
         refreshSuggestionsRef.current?.()
       }, 1000)
     }
@@ -222,39 +188,12 @@ export default function MeetingPage() {
   const finalSegments = getFinalSegments()
   const interimSegment = getInterimSegment()
 
-  // インサイト更新（useCallback内でgetFinalSegmentsを呼び出して常に最新値を取得）
-  const refreshInsight = useCallback(async () => {
-    try {
-      // 文字起こしの統計情報を計算（常に最新のセグメントを取得）
-      const currentSegments = getFinalSegments()
-      const transcriptText = currentSegments.map(s => s.text).join(' ')
-      const stats = {
-        totalSegments: currentSegments.length,
-        totalLength: transcriptText.length,
-        lastUpdate: new Date().toISOString()
-      }
-
-      console.log('[refreshInsight] Updating with stats:', stats)
-
-      // 統計情報と文字起こしテキストを含めてAPIを呼び出す
-      const statsParam = encodeURIComponent(JSON.stringify(stats))
-      const transcriptParam = encodeURIComponent(transcriptText)
-      const response = await fetch(`/api/insight?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data?.insight && typeof data.insight === 'object') {
-          console.log('[refreshInsight] Setting insight:', data.insight.summary_text?.substring(0, 50))
-          setInsight(data.insight)
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch insight:", error)
-    }
-  }, [sessionId, getFinalSegments])
-
   // 提案更新（useCallback内でgetFinalSegmentsを呼び出して常に最新値を取得）
   const refreshSuggestions = useCallback(async () => {
     try {
+      setIsLoadingSuggestions(true)
+      setApiError(null)
+
       // 文字起こしの統計情報を計算（常に最新のセグメントを取得）
       const currentSegments = getFinalSegments()
       const transcriptText = currentSegments.map(s => s.text).join(' ')
@@ -264,7 +203,7 @@ export default function MeetingPage() {
         lastUpdate: new Date().toISOString()
       }
 
-      console.log('[refreshSuggestions] Updating with stats:', stats)
+      if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
 
       // 統計情報と文字起こしテキストを含めてAPIを呼び出す
       const statsParam = encodeURIComponent(JSON.stringify(stats))
@@ -275,20 +214,21 @@ export default function MeetingPage() {
       if (response.ok) {
         const data = await response.json()
         if (data?.suggestions && typeof data.suggestions === 'object') {
-          console.log('[refreshSuggestions] Setting suggestions:', data.suggestions.questions?.length, 'questions')
+          if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', data.suggestions.questions?.length, 'questions')
           setSuggestions(data.suggestions)
         }
+      } else {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error("Failed to fetch suggestions:", error)
+      setApiError("提案の取得に失敗しました")
+    } finally {
+      setIsLoadingSuggestions(false)
     }
   }, [sessionId, getFinalSegments, session])
 
   // refを更新（triggerAnalysisが常に最新の関数を呼び出せるように）
-  useEffect(() => {
-    refreshInsightRef.current = refreshInsight
-  }, [refreshInsight])
-
   useEffect(() => {
     refreshSuggestionsRef.current = refreshSuggestions
   }, [refreshSuggestions])
@@ -296,14 +236,11 @@ export default function MeetingPage() {
   // 分析トリガー関数
   const triggerAnalysis = useCallback(async () => {
     try {
-      // 開発環境ではFunctionsを呼ばずに直接インサイト/提案を更新
+      // 開発環境ではFunctionsを呼ばずに直接提案を更新
       if (process.env.NODE_ENV !== "production") {
-        console.log('Development mode: Refreshing insights/suggestions directly')
+        if (DEBUG) console.log('Development mode: Refreshing suggestions directly')
         // refを使って最新の関数を呼び出す
-        await Promise.all([
-          refreshInsightRef.current?.(),
-          refreshSuggestionsRef.current?.()
-        ])
+        await refreshSuggestionsRef.current?.()
         return
       }
 
@@ -327,12 +264,9 @@ export default function MeetingPage() {
           }),
         })
 
-        // インサイトと提案を更新（refを使って最新の関数を呼び出す）
-        await Promise.all([
-          refreshInsightRef.current?.(),
-          refreshSuggestionsRef.current?.()
-        ])
-        console.log('Analysis triggered and insights/suggestions refreshed')
+        // 提案を更新（refを使って最新の関数を呼び出す）
+        await refreshSuggestionsRef.current?.()
+        console.log('Analysis triggered and suggestions refreshed')
       }
     } catch (error) {
       console.error("Failed to trigger analysis:", error)
@@ -359,17 +293,16 @@ export default function MeetingPage() {
     }
   }, [sttStatus, triggerAnalysis])
 
-  // 初期化時にインサイトと提案を取得
+  // 初期化時に提案を取得
   useEffect(() => {
     if (!authChecked || !sessionId) return
 
     const loadInitialData = async () => {
-      await refreshInsight()
       await refreshSuggestions()
     }
 
     loadInitialData()
-  }, [authChecked, sessionId])
+  }, [authChecked, sessionId, refreshSuggestions])
 
   // セッション開始時の処理
   const handleSessionStart = useCallback(async () => {
@@ -500,198 +433,120 @@ export default function MeetingPage() {
         </div>
       </header>
 
-      {/* メインコンテンツ */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左: 文字起こし */}
-        <div className="w-1/2 border-r flex flex-col">
-          <div className="bg-white px-4 py-2 border-b">
-            <h2 className="font-medium">文字起こし</h2>
+      {/* メインコンテンツ - 提案メイン表示 */}
+      <div className="flex-1 overflow-auto bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* エラー状態 */}
+          {apiError && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-red-800">エラーが発生しました</p>
+                    <p className="text-sm text-red-600 mt-1">{apiError}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refreshSuggestions}
+                    disabled={isLoadingSuggestions}
+                  >
+                    再読み込み
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 次に聞くべき質問 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">💡 次に聞くべき質問</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {suggestions?.questions && suggestions.questions.length > 0 ? (
+                <ul className="space-y-3">
+                  {suggestions.questions.map((q, i) => (
+                    <li key={i} className="bg-gray-50 rounded p-3">
+                      <p className="font-medium text-sm">{q.question}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        理由: {q.intent}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-400 text-center py-4">
+                  会議を開始すると質問が表示されます
+                </p>
+              )}
+
+              {/* 更新インジケーター */}
+              {sttStatus === "connected" && (
+                <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span>10秒ごとに更新中...</span>
+                  {isLoadingSuggestions && <span>（更新中）</span>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 提案カード */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">📋 提案カード</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {suggestions?.proposals && suggestions.proposals.length > 0 ? (
+                <ul className="space-y-3">
+                  {suggestions.proposals.map((p, i) => (
+                    <li key={i} className="border rounded p-3">
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium text-sm">{p.title}</p>
+                        <Badge
+                          variant={p.confidence === "high" ? "default" : "secondary"}
+                        >
+                          {p.confidence === "high" ? "高確度" : p.confidence === "medium" ? "中確度" : "低確度"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{p.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-400 text-center py-4">
+                  会議を開始すると提案が表示されます
+                </p>
+              )}
+
+              {/* 更新インジケーター */}
+              {sttStatus === "connected" && (
+                <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span>10秒ごとに更新中...</span>
+                  {isLoadingSuggestions && <span>（更新中）</span>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 手動更新ボタン */}
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              onClick={refreshSuggestions}
+              disabled={isLoadingSuggestions}
+            >
+              {isLoadingSuggestions ? "更新中..." : "更新"}
+            </Button>
           </div>
-          <ScrollArea className="flex-1 p-4">
-            {finalSegments.length === 0 && !interimSegment ? (
-              <p className="text-gray-400 text-center py-8">
-                会議を開始すると文字起こしが表示されます
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {finalSegments.map((segment) => (
-                  <div key={segment.id} className="bg-white rounded-lg p-3 shadow-sm">
-                    <p className="text-sm text-gray-700">{segment.text}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(segment.ts_start * 1000).toLocaleTimeString()}
-                    </p>
-                  </div>
-                ))}
-                {interimSegment && (
-                  <div className="bg-gray-100 rounded-lg p-3 italic">
-                    <p className="text-sm text-gray-500">{interimSegment.text}</p>
-                  </div>
-                )}
-                <div ref={transcriptEndRef} />
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-
-        {/* 右: インサイト・提案 */}
-        <div className="w-1/2 flex flex-col">
-          <Tabs defaultValue="insight" className="flex-1 flex flex-col">
-            <div className="bg-white px-4 py-2 border-b">
-              <TabsList>
-                <TabsTrigger value="insight">インサイト</TabsTrigger>
-                <TabsTrigger value="suggestions">提案</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="insight" className="flex-1 overflow-hidden" key={`insight-${updateCounter}`}>
-              <ScrollArea className="h-full p-4">
-                {insight ? (
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">要約</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm">{insight.summary_text}</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">課題</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {insight.pain_points?.map((pain, i) => (
-                            <li key={i} className="text-sm">
-                              <Badge variant="outline" className="mr-2">
-                                {pain.impact}
-                              </Badge>
-                              {pain.description}
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">制約</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {insight.constraints?.map((constraint, i) => (
-                            <li key={i} className="text-sm">
-                              <Badge variant="secondary" className="mr-2">
-                                {constraint.type}
-                              </Badge>
-                              {constraint.description}
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">ステークホルダー</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-2">
-                          {insight.stakeholders?.map((stakeholder, i) => (
-                            <li key={i} className="text-sm">
-                              <span className="font-medium">{stakeholder.name}</span>
-                              <span className="text-gray-500 ml-2">({stakeholder.role})</span>
-                              <Badge
-                                variant={
-                                  stakeholder.attitude === "champion"
-                                    ? "default"
-                                    : stakeholder.attitude === "blocker"
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                                className="ml-2"
-                              >
-                                {stakeholder.attitude}
-                              </Badge>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={refreshInsight}>
-                        更新
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    <p>インサイトが生成されると表示されます</p>
-                    <p className="text-sm mt-2">会議開始から30秒ごとに自動生成されます</p>
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="suggestions" className="flex-1 overflow-hidden" key={`suggestions-${updateCounter}`}>
-              <ScrollArea className="h-full p-4">
-                {suggestions ? (
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">次に聞くべき質問</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-3">
-                          {suggestions.questions?.map((q, i) => (
-                            <li key={i} className="bg-gray-50 rounded p-3">
-                              <p className="font-medium text-sm">{q.question}</p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                理由: {q.intent}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">提案カード</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-3">
-                          {suggestions.proposals?.map((p, i) => (
-                            <li key={i} className="border rounded p-3">
-                              <div className="flex justify-between items-start">
-                                <p className="font-medium text-sm">{p.title}</p>
-                                <Badge
-                                  variant={p.confidence === "high" ? "default" : "secondary"}
-                                >
-                                  {p.confidence}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">{p.body}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-
-                    <Button variant="outline" size="sm" onClick={refreshSuggestions}>
-                      更新
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    <p>提案が生成されると表示されます</p>
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
 

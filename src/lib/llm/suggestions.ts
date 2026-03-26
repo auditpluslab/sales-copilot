@@ -164,15 +164,6 @@ ${JSON.stringify(insight, null, 2)}
     temperature: 0.8,  // より創造的な回答を促す
     maxTokens: 4000,    // 思考プロセス + JSONに十分なトークン数
   })
-    {
-      role: "system",
-      content: SYSTEM_PROMPT,
-    },
-    {
-      role: "user",
-      content: userPrompt,
-    },
-  ])
 
   // デバッグ：LLMの生の出力をログに出力
   console.log("[LLM Raw Output Length]:", result.content?.length || 0)

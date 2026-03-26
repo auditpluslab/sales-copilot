@@ -54,11 +54,10 @@ test.describe('会議ページ', () => {
     await expect(page.locator('header')).toBeVisible()
 
     // MVP: 提案がメインコンテンツとして表示される
-    await expect(page.locator('h2:has-text("次に聞くべき質問")')).toBeVisible()
-    await expect(page.locator('h2:has-text("提案カード")')).toBeVisible()
+    await expect(page.locator('h3:has-text("次に聞くべき質問")')).toBeVisible()
+    await expect(page.locator('h3:has-text("提案カード")')).toBeVisible()
   })
 
-})
 })
 
 test.describe('セキュリティテスト', () => {

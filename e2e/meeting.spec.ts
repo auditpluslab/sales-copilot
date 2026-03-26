@@ -53,26 +53,12 @@ test.describe('会議ページ', () => {
     // ヘッダー
     await expect(page.locator('header')).toBeVisible()
 
-    // メインタブエリア
-    await expect(page.locator('[role="tablist"], [class*="tabs"]')).toBeVisible()
+    // MVP: 提案がメインコンテンツとして表示される
+    await expect(page.locator('h2:has-text("次に聞くべき質問")')).toBeVisible()
+    await expect(page.locator('h2:has-text("提案カード")')).toBeVisible()
   })
 
-  test('タブ切り替えが動作する', async ({ page }) => {
-    // 実際のタブ名に合わせて修正
-    const tabs = ['インサイト', '提案']
-
-    for (const tabName of tabs) {
-      const tab = page.locator(`button:has-text("${tabName}")`)
-      if (await tab.isVisible()) {
-        await tab.click()
-        // タブがアクティブになることを確認
-        await page.waitForTimeout(500)
-      }
-    }
-
-    // ページが正常に表示されていることを確認
-    await expect(page.locator('header')).toBeVisible()
-  })
+})
 })
 
 test.describe('セキュリティテスト', () => {

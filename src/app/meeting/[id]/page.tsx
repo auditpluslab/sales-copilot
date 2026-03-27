@@ -223,9 +223,9 @@ export default function MeetingPage() {
     console.log(`[Segments State] Total: ${segments.length}, Final: ${currentCount}, Text length: ${totalText.length}`)
 
     // finalセグメント数が増えたら、インサイト/提案を更新
-    // 条件: 10セグメント以上 && 300文字以上
-    const MIN_SEGMENTS = 10
-    const MIN_TEXT_LENGTH = 300
+    // 条件: 5セグメント以上 && 150文字以上
+    const MIN_SEGMENTS = 5
+    const MIN_TEXT_LENGTH = 150
     const shouldUpdate = currentCount > previousFinalSegmentCount.current &&
                         sttStatus === "connected" &&
                         currentCount >= MIN_SEGMENTS &&
@@ -275,9 +275,9 @@ export default function MeetingPage() {
 
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
 
-      // 最小条件チェック: 10セグメント以上 && 300文字以上
-      const MIN_SEGMENTS = 10
-      const MIN_TEXT_LENGTH = 300
+      // 最小条件チェック: 5セグメント以上 && 150文字以上
+      const MIN_SEGMENTS = 5
+      const MIN_TEXT_LENGTH = 150
       if (currentSegments.length < MIN_SEGMENTS || transcriptText.length < MIN_TEXT_LENGTH) {
         console.log(`[refreshSuggestions] Not enough context yet: ${currentSegments.length} segments (need ${MIN_SEGMENTS}+), ${transcriptText.length} chars (need ${MIN_TEXT_LENGTH}+)`)
         setIsLoadingSuggestions(false)
@@ -456,19 +456,19 @@ export default function MeetingPage() {
     }
   }, [sessionId, userId])
 
-  // 定期分析（30秒ごと）
+  // 定期分析（15秒ごと）
   useEffect(() => {
     if (sttStatus !== "connected") return
 
     // セッション開始時に最初の分析をスケジュール
     const initialTimer = setTimeout(() => {
       triggerAnalysis()
-    }, 30000)
+    }, 15000)
 
-    // その後は30秒ごとに分析を実行
+    // その後は15秒ごとに分析を実行
     const interval = setInterval(() => {
       triggerAnalysis()
-    }, 30000)
+    }, 15000)
 
     return () => {
       clearTimeout(initialTimer)

@@ -109,10 +109,12 @@ export default function NewSessionPage() {
       // ナビゲーション前に最終確認
       console.log("Navigating to meeting page with session:", session.id)
 
-      // 少し待機してナビゲーション
-      await new Promise(resolve => setTimeout(resolve, 100))
-
+      // 遅延なしで即座にナビゲート
       router.push(`/meeting/${session.id}`)
+
+      // ナビゲーション後のエラー検証
+      await new Promise(resolve => setTimeout(resolve, 100))
+      console.log("Navigation completed, current URL:", window.location.href)
     } catch (error) {
       console.error("Failed to create session:", error)
       setError(error instanceof Error ? error.message : "セッションの作成に失敗しました")

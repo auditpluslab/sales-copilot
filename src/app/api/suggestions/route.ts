@@ -94,6 +94,19 @@ export async function GET(request: NextRequest) {
 
     // 開発環境では動的なモックデータを返す（フォールバック）
     if (process.env.NODE_ENV !== "production") {
+      // 会話がまだない場合は空のレスポンスを返す
+      if (transcriptLength === 0 && segmentCount === 0) {
+        console.log('[Mock Suggestions] No conversation yet, returning empty response')
+        return NextResponse.json({
+          suggestions: {
+            id: `empty-${sessionId}-${Date.now()}`,
+            session_id: sessionId || 'empty-session',
+            questions: [],
+            proposals: [],
+            created_at: new Date().toISOString(),
+          }
+        })
+      }
 
       const hasContent = transcriptLength > 50 || segmentCount > 2
       const hasModerateContent = transcriptLength > 200 || segmentCount > 5

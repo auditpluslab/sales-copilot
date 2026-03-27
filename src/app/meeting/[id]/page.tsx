@@ -556,6 +556,16 @@ export default function MeetingPage() {
 
   // 録音開始
   const handleStartMeeting = async () => {
+    // 認証チェック
+    if (!userId && process.env.NODE_ENV === "production") {
+      toast({
+        title: "認証エラー",
+        description: "ログインしてください",
+        variant: "destructive",
+      })
+      return
+    }
+
     await handleSessionStart()
     await connect()
     // Web Speech APIでは、connect()の中で自動的に音声認識が開始される
@@ -845,7 +855,14 @@ export default function MeetingPage() {
           <div className="flex justify-center">
             <Button
               variant="outline"
-              onClick={refreshSuggestions}
+              onClick={(e) => {
+                // ダブルクリック防止（1秒間無効化）
+                (e.currentTarget as HTMLButtonElement).disabled = true
+                refreshSuggestions()
+                setTimeout(() => {
+                  (e.currentTarget as HTMLButtonElement).disabled = false
+                }, 1000)
+              }}
               disabled={isLoadingSuggestions}
             >
               {isLoadingSuggestions ? "更新中..." : "🔄 手動更新"}

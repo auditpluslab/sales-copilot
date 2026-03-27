@@ -47,25 +47,6 @@ export async function GET(request: NextRequest) {
                         request.headers.get('x-use-llm') === 'true' ||
                         process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
 
-    // 開発環境でテストしやすいように、会話テキストが短い場合はテスト用テキストを使用
-    const isDev = process.env.NODE_ENV !== "production"
-    if (isDev && useLlmInDev && transcriptText.length < 50) {
-      console.log('[Suggestions] Using test transcript for development (transcript too short)')
-      transcriptText = `
-営業担当者: 本日は御社の人事評価制度についてお話しさせてください。まずは、現在の課題から教えていただけますか？
-
-人事担当者: はい、現在大きく2つの課題があります。1つ目は、評価の基準が部署によってバラバラで不公平感があるということ。もう1つは、評価作業自体に時間がかかりすぎているんです。
-
-営業担当者: 具体的には、どのくらいの時間がかかっていますか？
-
-人事担当者: 四半期ごとの評価業務で、部下30名分の評価書を作成するのに約2週間かかっています。各評価書の作成に1時間程度で、合計で30時間くらいです。
-
-営業担当者: なるほど、30時間ですか。評価の件数は年間でどのくらいですか？
-
-人事担当者: 年4回の評価なので、年間120件の評価書を作成することになります。延べ120時間かかっている計算です。
-      `.trim()
-      console.log('[Suggestions] Test transcript length:', transcriptText.length)
-    }
 
     if (transcriptText.length > 0 && useLlmInDev) {
       // 開発環境では認証チェックをスキップ
@@ -121,6 +102,7 @@ export async function GET(request: NextRequest) {
       // 質問を動的に生成
       const questions = [
         {
+          id: `mock-q-${Date.now()}-1`,
           question: '導入の目的と期待される効果について具体的にお聞かせいただけますか？',
           intent: '導入目的の明確化',
           priority: 'high',
@@ -129,6 +111,7 @@ export async function GET(request: NextRequest) {
       ]
       if (hasContent) {
         questions.push({
+          id: `mock-q-${Date.now()}-2`,
           question: '予算についての制約や要件はありますか？',
           intent: '予算枠の確認',
           priority: 'high',
@@ -137,6 +120,7 @@ export async function GET(request: NextRequest) {
       }
       if (hasModerateContent) {
         questions.push({
+          id: `mock-q-${Date.now()}-3`,
           question: '既存システムとの連携について、どのような要件がありますか？',
           intent: '技術要件の把握',
           priority: 'medium',
@@ -145,6 +129,7 @@ export async function GET(request: NextRequest) {
       }
       if (hasSubstantialContent) {
         questions.push({
+          id: `mock-q-${Date.now()}-4`,
           question: '意思決定のタイミングについて教えていただけますか？',
           intent: '導入時期の確認',
           priority: 'medium',
@@ -155,6 +140,7 @@ export async function GET(request: NextRequest) {
       // 提案を動的に生成
       const proposals = [
         {
+          id: `mock-p-${Date.now()}-1`,
           title: '導入効果の試算',
           body: `現在${segmentCount}件の発言があります。貴社の現状から想定される効果を試算します。`,
           confidence: hasSubstantialContent ? 'high' : 'medium',
@@ -164,6 +150,7 @@ export async function GET(request: NextRequest) {
       ]
       if (hasModerateContent) {
         proposals.push({
+          id: `mock-p-${Date.now()}-2`,
           title: '導入プランの提案',
           body: '段階的な導入アプローチをご提案します。まずは小規模なパイロットから始め、効果を確認しながら拡大します。',
           confidence: 'medium',
@@ -173,6 +160,7 @@ export async function GET(request: NextRequest) {
       }
       if (hasSubstantialContent) {
         proposals.push({
+          id: `mock-p-${Date.now()}-3`,
           title: '成功事例の共有',
           body: '同業種・同規模の企業での導入事例をご紹介します。具体的な成果として、業務効率化率、コスト削減額などをお示しします。',
           confidence: 'high',

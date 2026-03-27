@@ -256,24 +256,6 @@ export default function MeetingPage() {
       const currentSegments = getFinalSegments()
       let transcriptText = currentSegments.map(s => s.text).join(' ')
 
-      // 開発環境でLLMをテストするためのダミーデータ
-      const useDevLlm = process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
-      if (useDevLlm && transcriptText.length < 50) {
-        transcriptText = `
-営業担当者: 本日は御社の業務効率化についてお話しさせてください。まずは、現在の課題から教えていただけますか？
-
-クライアント: はい、現在大きく2つの課題があります。1つ目は、営業案件の管理がExcelで行っていて、進捗の可視化ができていないこと。もう1つは、見積もりの作成に時間がかかっているんです。
-
-営業担当者: 具体的には、どのくらいの時間がかかっていますか？
-
-クライアント: 見積もり作成だけで1件あたり2時間程度かかっています。月に20件ほど作成していて、そのうち40時間くらいを使っている計算になります。
-
-営業担当者: なるほど、40時間ですか。予算の枠はどの程度お考えですか？
-
-クライアント: 今のところ年間300万円程度を考えていますが、効果が見えれば拡大しても良いと思っています。
-        `.trim()
-      }
-
       const stats = {
         totalSegments: currentSegments.length,
         totalLength: transcriptText.length,
@@ -281,7 +263,9 @@ export default function MeetingPage() {
       }
 
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
-      if (useDevLlm) console.log('[refreshSuggestions] Using dev LLM mode, transcript length:', transcriptText.length)
+      if (process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true') {
+        console.log('[refreshSuggestions] Using dev LLM mode, transcript length:', transcriptText.length)
+      }
 
       // 統計情報と文字起こしテキストを含めてAPIを呼び出す
       const statsParam = encodeURIComponent(JSON.stringify(stats))

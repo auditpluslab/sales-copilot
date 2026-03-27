@@ -24,8 +24,22 @@ export async function GET(request: NextRequest) {
     if (statsParam) {
       try {
         const stats = JSON.parse(decodeURIComponent(statsParam))
-        transcriptLength = stats.totalLength || 0
-        segmentCount = stats.totalSegments || 0
+
+        // 型チェック
+        if (stats.totalLength !== undefined) {
+          const length = Number(stats.totalLength)
+          if (!isNaN(length) && length >= 0) {
+            transcriptLength = length
+          }
+        }
+
+        if (stats.totalSegments !== undefined) {
+          const segments = Number(stats.totalSegments)
+          if (!isNaN(segments) && segments >= 0) {
+            segmentCount = segments
+          }
+        }
+
         console.log('[Suggestions] Using stats from client:', { segmentCount, transcriptLength })
       } catch (e) {
         console.error('Failed to parse stats param:', e)
@@ -34,7 +48,9 @@ export async function GET(request: NextRequest) {
 
     if (transcriptParam) {
       try {
-        transcriptText = decodeURIComponent(transcriptParam)
+        const decoded = decodeURIComponent(transcriptParam)
+        // サニタイズ（長さ制限と危険なパターンを検出）
+        transcriptText = sanitizeInput(decoded, { maxLength: 50000 })
         console.log('[Suggestions] Using transcript from client:', transcriptText.substring(0, 100))
       } catch (e) {
         console.error('Failed to parse transcript param:', e)
@@ -43,9 +59,13 @@ export async function GET(request: NextRequest) {
 
     // 文字起こしテキストがある場合は、LLMを使って提案を生成
     if (transcriptText.length > 0) {
-      // 開発環境では認証チェックをスキップ
-      const userId = process.env.NODE_ENV === "production" ? await getUserId() : "test-user-id"
-      if (process.env.NODE_ENV === "production" && !userId) {
+      // 開発環境では認証チェックをスキップ（USE_LLM_IN_DEVがtrueの場合のみ）
+      const shouldSkipAuth = process.env.NODE_ENV !== "production" &&
+                            process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
+
+      const userId = shouldSkipAuth ? "test-user-id" : await getUserId()
+
+      if (!shouldSkipAuth && !userId) {
         return NextResponse.json(
           { error: "Authentication required" },
           { status: 401 }

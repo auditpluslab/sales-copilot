@@ -1,6 +1,17 @@
 import { cookies } from 'next/headers'
 
-const CSRF_SECRET = process.env.CSRF_SECRET || 'default-csrf-secret-change-in-production'
+const CSRF_SECRET = process.env.CSRF_SECRET
+
+if (!CSRF_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("CSRF_SECRET must be set in production")
+  }
+  // 開発環境では警告を表示
+  console.warn("CSRF_SECRET is not set, using insecure default for development only")
+}
+
+// 開発環境でのみデフォルト値を使用
+const CSRF_SECRET_FOR_DEV = CSRF_SECRET || 'default-csrf-secret-change-in-production'
 const CSRF_TOKEN_LENGTH = 32
 
 /**
@@ -9,7 +20,7 @@ const CSRF_TOKEN_LENGTH = 32
 export async function generateCsrfToken(): Promise<string> {
   const timestamp = Date.now()
   const random = generateRandomString(CSRF_TOKEN_LENGTH)
-  const signature = await hmacSha256(`${timestamp}.${random}`, CSRF_SECRET)
+  const signature = await hmacSha256(`${timestamp}.${random}`, CSRF_SECRET_FOR_DEV)
 
   return `${timestamp}.${random}.${signature}`
 }
@@ -35,7 +46,7 @@ export async function validateCsrfToken(token: string | null): Promise<boolean> 
   }
 
   // 署名の検証
-  const expectedSignature = await hmacSha256(`${timestampStr}.${random}`, CSRF_SECRET)
+  const expectedSignature = await hmacSha256(`${timestampStr}.${random}`, CSRF_SECRET_FOR_DEV)
 
   return signature === expectedSignature
 }

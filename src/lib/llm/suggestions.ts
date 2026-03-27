@@ -214,5 +214,24 @@ ${JSON.stringify(insight, null, 2)}
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
   }
 
-  return JSON.parse(content)
+  const parsed = JSON.parse(content)
+
+  // idがない場合は自動生成（一意なIDを生成）
+  const generateId = (prefix: string, index: number) => {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${index}`
+  }
+
+  const questions = (parsed.questions || []).map((q: DeepDiveQuestion, i: number) => ({
+    ...q,
+    id: q.id || generateId('q', i)
+  }))
+
+  const proposals = (parsed.proposals || []).map((p: SuggestionCard, i: number) => ({
+    ...p,
+    id: p.id || generateId('p', i)
+  }))
+
+  console.log(`[Suggestions] Generated ${questions.length} questions, ${proposals.length} proposals`)
+
+  return { questions, proposals }
 }

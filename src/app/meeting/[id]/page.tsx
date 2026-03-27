@@ -15,6 +15,10 @@ import type { SuggestionCard, DeepDiveQuestion, Session } from "@/types"
 // デバッグフラグ - 本番環境ではfalse
 const DEBUG = process.env.NODE_ENV !== "production"
 
+// 提案生成の最小条件（定数）
+const MIN_SEGMENTS = 3
+const MIN_TEXT_LENGTH = 100
+
 export default function MeetingPage() {
   const params = useParams()
   const router = useRouter()
@@ -224,8 +228,6 @@ export default function MeetingPage() {
 
     // finalセグメント数が増えたら、インサイト/提案を更新
     // 条件: 3セグメント以上 && 100文字以上（バックグラウンド事前生成）
-    const MIN_SEGMENTS = 3
-    const MIN_TEXT_LENGTH = 100
     const shouldUpdate = currentCount > previousFinalSegmentCount.current &&
                         sttStatus === "connected" &&
                         currentCount >= MIN_SEGMENTS &&
@@ -274,8 +276,6 @@ export default function MeetingPage() {
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
 
       // 最小条件チェック: 3セグメント以上 && 100文字以上
-      const MIN_SEGMENTS = 3
-      const MIN_TEXT_LENGTH = 100
       if (currentSegments.length < MIN_SEGMENTS || transcriptText.length < MIN_TEXT_LENGTH) {
         console.log(`[refreshSuggestions] Not enough context yet: ${currentSegments.length} segments (need ${MIN_SEGMENTS}+), ${transcriptText.length} chars (need ${MIN_TEXT_LENGTH}+)`)
         setIsLoadingSuggestions(false)

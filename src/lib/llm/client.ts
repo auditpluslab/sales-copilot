@@ -32,14 +32,61 @@ export async function chatCompletion(
     throw new Error("DEEPSEEK_API_KEY is not set")
   }
 
-  const response = await llmClient.chat.completions.create({
-    model: options?.model || "deepseek-chat",
-    messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-    temperature: options?.temperature ?? 0.3,
-    max_tokens: options?.maxTokens ?? 2000,
-  })
+  const maxRetries = 3
+  const baseDelay = 1000 // 1秒
 
-  return response.choices[0].message
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await llmClient.chat.completions.create({
+        model: options?.model || "deepseek-chat",
+        messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+        temperature: options?.temperature ?? 0.3,
+        max_tokens: options?.maxTokens ?? 2000,
+      })
+
+      // 空レスポンスの検出
+      if (!response.choices[0]?.message?.content) {
+        console.error(`[LLM] Empty response on attempt ${attempt + 1}/${maxRetries}`)
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt)
+          console.log(`[LLM] Retrying after ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        throw new Error("LLM returned empty response")
+      }
+
+      return response.choices[0].message
+    } catch (error: any) {
+      // レート制限（429）の場合はリトライ
+      if (error.status === 429) {
+        console.warn(`[LLM] Rate limited on attempt ${attempt + 1}/${maxRetries}`)
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt) * 2 // 429は倍の待ち時間
+          console.log(`[LLM] Waiting ${delay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        throw new Error(`LLM rate limited after ${maxRetries} attempts`)
+      }
+
+      // タイムアウトまたはネットワークエラーの場合はリトライ
+      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.message?.includes('timeout')) {
+        console.warn(`[LLM] Timeout/network error on attempt ${attempt + 1}/${maxRetries}:`, error.message)
+        if (attempt < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(2, attempt)
+          console.log(`[LLM] Retrying after ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+      }
+
+      // その他のエラーは即座にスロー
+      throw error
+    }
+  }
+
+  throw new Error(`LLM failed after ${maxRetries} attempts`)
 }
 
 export async function structuredOutput<T>(

@@ -216,9 +216,18 @@ ${JSON.stringify(insight, null, 2)}
     maxTokens: 4000,    // 思考プロセス + JSONに十分なトークン数
   })
 
+  // 空レスポンスの検出
+  if (!result.content || result.content.trim().length === 0) {
+    console.error('[Suggestions] LLM returned empty response')
+    return {
+      questions: [],
+      proposals: []
+    }
+  }
+
   // デバッグ：LLMの生の出力をログに出力
-  console.log("[LLM Raw Output Length]:", result.content?.length || 0)
-  console.log("[LLM Raw Output Preview]:", result.content?.substring(0, 500) || "")
+  console.log("[LLM Raw Output Length]:", result.content.length)
+  console.log("[LLM Raw Output Preview]:", result.content.substring(0, 500))
 
   // Chain of Thoughtの出力からJSON部分のみを抽出
   let content = result.content || "{}"

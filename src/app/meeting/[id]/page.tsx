@@ -290,7 +290,24 @@ export default function MeetingPage() {
       const transcriptParam = encodeURIComponent(transcriptText)
       const clientId = session?.client_id || ''
       const clientIdParam = clientId ? `&client_id=${clientId}` : ''
-      const response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}${clientIdParam}`)
+
+      // タイムアウト付きのfetch（30秒）
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      let response
+      try {
+        response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}${clientIdParam}`, {
+          signal: controller.signal
+        })
+      } catch (fetchError: any) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error('提案の生成がタイムアウトしました（30秒）')
+        }
+        throw fetchError
+      } finally {
+        clearTimeout(timeoutId)
+      }
       if (response.ok) {
         const data = await response.json()
         // suggestionsがnullまたはundefinedの場合、空のオブジェクトを使用
@@ -401,9 +418,30 @@ export default function MeetingPage() {
       } else {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error)
-      setApiError("提案の取得に失敗しました")
+    } catch (error: any) {
+      console.error("[refreshSuggestions] Failed to fetch suggestions:", error)
+
+      // エラーの種類に応じて適切なメッセージを表示
+      let errorMessage = "提案の取得に失敗しました"
+
+      if (error.message?.includes('タイムアウト')) {
+        errorMessage = "提案の生成がタイムアウトしました。もう一度お試しください。"
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        errorMessage = "ネットワークエラーが発生しました。接続を確認してください。"
+      } else if (error.message?.includes('rate limited') || error.message?.includes('429')) {
+        errorMessage = "リクエストが多すぎます。しばらくお待ちください。"
+      } else if (error.message) {
+        errorMessage = `エラーが発生しました: ${error.message}`
+      }
+
+      setApiError(errorMessage)
+
+      // ユーザーにトースト通知
+      toast({
+        title: "提案の生成に失敗しました",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsLoadingSuggestions(false)
     }

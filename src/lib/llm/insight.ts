@@ -79,8 +79,27 @@ ${JSON.stringify(existingInsight, null, 2)}
     },
   ])
 
+  // 空レスポンスの検出
+  if (!result.content || result.content.trim().length === 0) {
+    console.error('[Insight] LLM returned empty response')
+    return {
+      summary_text: "",
+      pain_points: [],
+      constraints: [],
+      stakeholders: [],
+      timeline: {
+        urgency: "low",
+        deadline: null,
+        milestones: []
+      },
+      sentiment: "neutral",
+      budget_hint: null,
+      competitors: []
+    }
+  }
+
   // LLMの出力からMarkdownコードブロックを取り除く
-  let content = result.content || "{}"
+  let content = result.content
   // Markdownのコードブロックを削除（```json ... ```）
   content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '')
   // 余分な空白を削除

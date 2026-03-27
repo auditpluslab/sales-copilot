@@ -331,22 +331,53 @@ export async function generateContextualSuggestions(params: {
   })
 
   // 4. LLMで生成
-  const result = await chatCompletion([
-    {
-      role: "system",
-      content: CONTEXTUAL_SUGGESTION_SYSTEM_PROMPT,
-    },
-    {
-      role: "user",
-      content: prompt,
-    },
-  ], {
-    temperature: 0.1,  // より決定論的に
-    maxTokens: 3000
-  })
+  let result
+  try {
+    result = await chatCompletion([
+      {
+        role: "system",
+        content: CONTEXTUAL_SUGGESTION_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ], {
+      temperature: 0.1,  // より決定論的に
+      maxTokens: 3000
+    })
+  } catch (error) {
+    console.error("[ContextualSuggestions] LLM call failed:", error)
+    // LLMエラー時は標準の提案生成にフォールバック
+    return {
+      questions: [],
+      proposals: [],
+      context_used: {
+        history_sessions_used: history?.sessions.length || 0,
+        recent_statements_used: currentContext.recent_statements.length,
+        evolution_detected: false,
+        error: "LLM call failed"
+      }
+    }
+  }
+
+  // 空レスポンスの検出
+  if (!result.content || result.content.trim().length === 0) {
+    console.error('[ContextualSuggestions] LLM returned empty response')
+    return {
+      questions: [],
+      proposals: [],
+      context_used: {
+        history_sessions_used: history?.sessions.length || 0,
+        recent_statements_used: currentContext.recent_statements.length,
+        evolution_detected: false,
+        error: "Empty LLM response"
+      }
+    }
+  }
 
   // 5. 結果をパース
-  let content = result.content || "{}"
+  let content = result.content
   // LLMの出力からMarkdownコードブロックを取り除く
   content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 

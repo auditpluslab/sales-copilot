@@ -357,11 +357,23 @@ export default function MeetingPage() {
             }))
           }
 
-          // 履歴に追加（最大100件）
-          setHistory(prev => ({
-            questions: [...newQuestions, ...prev.questions].slice(0, 100),
-            proposals: [...newProposals, ...prev.proposals].slice(0, 100),
-          }))
+          // 履歴に追加（最大100件、重複を除外）
+          setHistory(prev => {
+            const existingQuestionIds = new Set(prev.questions.map(q => q.id))
+            const existingProposalIds = new Set(prev.proposals.map(p => p.id))
+
+            const uniqueNewQuestions = newQuestions.filter((q: DeepDiveQuestion) =>
+              !existingQuestionIds.has(q.id)
+            )
+            const uniqueNewProposals = newProposals.filter((p: SuggestionCard) =>
+              !existingProposalIds.has(p.id)
+            )
+
+            return {
+              questions: [...uniqueNewQuestions, ...prev.questions].slice(0, 100),
+              proposals: [...uniqueNewProposals, ...prev.proposals].slice(0, 100),
+            }
+          })
 
           // 提案を更新
           setSuggestions(newSuggestions)

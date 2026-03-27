@@ -223,8 +223,16 @@ export default function MeetingPage() {
     console.log(`[Segments State] Total: ${segments.length}, Final: ${currentCount}, Text length: ${totalText.length}`)
 
     // finalセグメント数が増えたら、インサイト/提案を更新
-    if (currentCount > previousFinalSegmentCount.current && sttStatus === "connected") {
-      console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, triggering update`)
+    // 条件: 10セグメント以上 && 300文字以上
+    const MIN_SEGMENTS = 10
+    const MIN_TEXT_LENGTH = 300
+    const shouldUpdate = currentCount > previousFinalSegmentCount.current &&
+                        sttStatus === "connected" &&
+                        currentCount >= MIN_SEGMENTS &&
+                        totalText.length >= MIN_TEXT_LENGTH
+
+    if (shouldUpdate) {
+      console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, text: ${totalText.length}, triggering update`)
       previousFinalSegmentCount.current = currentCount
 
       // 少し遅延させてから更新（複数セグメントが連続して追加される場合の対応）
@@ -232,6 +240,9 @@ export default function MeetingPage() {
         if (DEBUG) console.log('[Delayed Update] Calling refreshSuggestions')
         refreshSuggestionsRef.current?.()
       }, 1000)
+    } else if (currentCount > previousFinalSegmentCount.current && sttStatus === "connected") {
+      console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, text: ${totalText.length}, not enough context yet (need ${MIN_SEGMENTS}+ segments and ${MIN_TEXT_LENGTH}+ chars)`)
+      previousFinalSegmentCount.current = currentCount
     }
   }, [segments, getFinalSegments, sttStatus])
 
@@ -263,6 +274,15 @@ export default function MeetingPage() {
       }
 
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
+
+      // 最小条件チェック: 10セグメント以上 && 300文字以上
+      const MIN_SEGMENTS = 10
+      const MIN_TEXT_LENGTH = 300
+      if (currentSegments.length < MIN_SEGMENTS || transcriptText.length < MIN_TEXT_LENGTH) {
+        console.log(`[refreshSuggestions] Not enough context yet: ${currentSegments.length} segments (need ${MIN_SEGMENTS}+), ${transcriptText.length} chars (need ${MIN_TEXT_LENGTH}+)`)
+        setIsLoadingSuggestions(false)
+        return
+      }
       if (process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true') {
         console.log('[refreshSuggestions] Using dev LLM mode, transcript length:', transcriptText.length)
       }
@@ -436,19 +456,19 @@ export default function MeetingPage() {
     }
   }, [sessionId, userId])
 
-  // 定期分析（10秒ごと）
+  // 定期分析（30秒ごと）
   useEffect(() => {
     if (sttStatus !== "connected") return
 
     // セッション開始時に最初の分析をスケジュール
     const initialTimer = setTimeout(() => {
       triggerAnalysis()
-    }, 10000)
+    }, 30000)
 
-    // その後は10秒ごとに分析を実行
+    // その後は30秒ごとに分析を実行
     const interval = setInterval(() => {
       triggerAnalysis()
-    }, 10000)
+    }, 30000)
 
     return () => {
       clearTimeout(initialTimer)

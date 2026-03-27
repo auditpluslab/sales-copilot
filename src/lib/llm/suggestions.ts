@@ -168,7 +168,7 @@ ${JSON.stringify(insight, null, 2)}
 重要：思考プロセスから出力を開始してください。JSONだけを出力しないでください。`;
 
   // 会話が十分でない場合は空のレスポンスを返す
-  if (transcriptText.length < 100) {
+  if (transcriptText.length < 300) {
     console.log('[Suggestions] Transcript too short, returning empty response')
     return {
       questions: [],

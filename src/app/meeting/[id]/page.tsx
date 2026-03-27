@@ -223,23 +223,21 @@ export default function MeetingPage() {
     console.log(`[Segments State] Total: ${segments.length}, Final: ${currentCount}, Text length: ${totalText.length}`)
 
     // finalセグメント数が増えたら、インサイト/提案を更新
-    // 条件: 5セグメント以上 && 150文字以上
-    const MIN_SEGMENTS = 5
-    const MIN_TEXT_LENGTH = 150
+    // 条件: 3セグメント以上 && 100文字以上（バックグラウンド事前生成）
+    const MIN_SEGMENTS = 3
+    const MIN_TEXT_LENGTH = 100
     const shouldUpdate = currentCount > previousFinalSegmentCount.current &&
                         sttStatus === "connected" &&
                         currentCount >= MIN_SEGMENTS &&
                         totalText.length >= MIN_TEXT_LENGTH
 
     if (shouldUpdate) {
-      console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, text: ${totalText.length}, triggering update`)
+      console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, text: ${totalText.length}, triggering IMMEDIATE update (no delay)`)
       previousFinalSegmentCount.current = currentCount
 
-      // 少し遅延させてから更新（複数セグメントが連続して追加される場合の対応）
-      setTimeout(() => {
-        if (DEBUG) console.log('[Delayed Update] Calling refreshSuggestions')
-        refreshSuggestionsRef.current?.()
-      }, 1000)
+      // 即座に実行（バックグラウンド事前生成）
+      if (DEBUG) console.log('[Immediate Update] Calling refreshSuggestions')
+      refreshSuggestionsRef.current?.()
     } else if (currentCount > previousFinalSegmentCount.current && sttStatus === "connected") {
       console.log(`[Final Segments Changed] ${previousFinalSegmentCount.current} → ${currentCount}, text: ${totalText.length}, not enough context yet (need ${MIN_SEGMENTS}+ segments and ${MIN_TEXT_LENGTH}+ chars)`)
       previousFinalSegmentCount.current = currentCount
@@ -275,9 +273,9 @@ export default function MeetingPage() {
 
       if (DEBUG) console.log('[refreshSuggestions] Updating with stats:', stats)
 
-      // 最小条件チェック: 5セグメント以上 && 150文字以上
-      const MIN_SEGMENTS = 5
-      const MIN_TEXT_LENGTH = 150
+      // 最小条件チェック: 3セグメント以上 && 100文字以上
+      const MIN_SEGMENTS = 3
+      const MIN_TEXT_LENGTH = 100
       if (currentSegments.length < MIN_SEGMENTS || transcriptText.length < MIN_TEXT_LENGTH) {
         console.log(`[refreshSuggestions] Not enough context yet: ${currentSegments.length} segments (need ${MIN_SEGMENTS}+), ${transcriptText.length} chars (need ${MIN_TEXT_LENGTH}+)`)
         setIsLoadingSuggestions(false)
@@ -456,19 +454,19 @@ export default function MeetingPage() {
     }
   }, [sessionId, userId])
 
-  // 定期分析（15秒ごと）
+  // 定期分析（10秒ごと）
   useEffect(() => {
     if (sttStatus !== "connected") return
 
     // セッション開始時に最初の分析をスケジュール
     const initialTimer = setTimeout(() => {
       triggerAnalysis()
-    }, 15000)
+    }, 10000)
 
-    // その後は15秒ごとに分析を実行
+    // その後は10秒ごとに分析を実行
     const interval = setInterval(() => {
       triggerAnalysis()
-    }, 15000)
+    }, 10000)
 
     return () => {
       clearTimeout(initialTimer)

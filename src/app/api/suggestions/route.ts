@@ -47,7 +47,27 @@ export async function GET(request: NextRequest) {
                         request.headers.get('x-use-llm') === 'true' ||
                         process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
 
-    if (transcriptText.length > 50 && useLlmInDev) {
+    // 開発環境でテストしやすいように、会話テキストが短い場合はテスト用テキストを使用
+    const isDev = process.env.NODE_ENV !== "production"
+    if (isDev && useLlmInDev && transcriptText.length < 50) {
+      console.log('[Suggestions] Using test transcript for development (transcript too short)')
+      transcriptText = `
+営業担当者: 本日は御社の業務効率化についてお話しさせてください。まずは、現在の課題から教えていただけますか？
+
+クライアント: はい、現在大きく2つの課題があります。1つ目は、営業案件の管理がExcelで行っていて、進捗の可視化ができていないこと。もう1つは、見積もりの作成に時間がかかっているんです。
+
+営業担当者: 具体的には、どのくらいの時間がかかっていますか？
+
+クライアント: 見積もり作成だけで1件あたり2時間程度かかっています。月に20件ほど作成していて、そのうち40時間くらいを使っている計算になります。
+
+営業担当者: なるほど、40時間ですか。予算の枠はどの程度お考えですか？
+
+クライアント: 今のところ年間300万円程度を考えていますが、効果が見えれば拡大しても良いと思っています。
+      `.trim()
+      console.log('[Suggestions] Test transcript length:', transcriptText.length)
+    }
+
+    if (transcriptText.length > 0 && useLlmInDev) {
       // 開発環境では認証チェックをスキップ
       const userId = process.env.NODE_ENV === "production" ? await getUserId() : "test-user-id"
       if (process.env.NODE_ENV === "production" && !userId) {

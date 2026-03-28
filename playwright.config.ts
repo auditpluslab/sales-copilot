@@ -7,7 +7,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: [
+    ['list'],
+    // ['html', { open: 'never' }],  // Disable HTML reporter to avoid file write issues
+  ],
 
   // グローバルセットアップで認証を実行
   globalSetup: path.join(__dirname, 'e2e', 'global-setup.ts'),
@@ -31,10 +34,10 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'npx next dev --port 3000',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  // webServer: {
+  //   command: 'npx next dev --port 3000',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: true,
+  //   timeout: 120 * 1000,
+  // },
 })

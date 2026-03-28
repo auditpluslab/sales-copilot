@@ -11,10 +11,9 @@ async function globalSetup(config: FullConfig) {
     fs.mkdirSync(authDir, { recursive: true })
   }
 
-  // 既に認証ファイルが存在する場合も再作成する（常に最新の状態を保証）
+  // 既に認証ファイルが存在する場合は上書きする（削除は権限エラーを防ぐためにスキップ）
   if (fs.existsSync(authFile)) {
-    console.log('Auth file exists, recreating for fresh authentication')
-    fs.unlinkSync(authFile)
+    console.log('Auth file exists, will overwrite with fresh authentication')
   }
 
   console.log('Starting authentication...')

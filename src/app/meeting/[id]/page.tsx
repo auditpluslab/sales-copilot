@@ -292,7 +292,7 @@ export default function MeetingPage() {
 
       // 統計情報と文字起こしテキストを含めてAPIを呼び出す
       const statsParam = encodeURIComponent(JSON.stringify(stats))
-      const segmentsParam = encodeURIComponent(segmentsText)
+      const transcriptParam = encodeURIComponent(segmentsText)  // 'segments' -> 'transcript' に変更
       const clientId = session?.client_id || ''
       const clientIdParam = clientId ? `&client_id=${clientId}` : ''
 
@@ -302,7 +302,7 @@ export default function MeetingPage() {
 
       let response
       try {
-        response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&segments=${segmentsParam}${clientIdParam}`, {
+        response = await fetch(`/api/suggestions?session_id=${sessionId}&stats=${statsParam}&transcript=${transcriptParam}${clientIdParam}`, {
           signal: controller.signal
         })
       } catch (fetchError: any) {

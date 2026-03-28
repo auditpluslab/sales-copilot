@@ -86,8 +86,8 @@ export const analysisTriggered = inngest.createFunction(
     try {
       const supabase = createServerClient()
 
-      // 直近90秒の文字起こしを取得
-      const cutoffTime = Date.now() - 90000
+      // 直近5秒の文字起こしを取得
+      const cutoffTime = Date.now() - 5000
       const { data: recentSegments } = await supabase
         .from("transcript_segments")
         .select("text, ts_start, is_final")

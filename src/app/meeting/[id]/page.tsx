@@ -497,19 +497,19 @@ export default function MeetingPage() {
     }
   }, [sessionId, userId])
 
-  // 定期分析（10秒ごと）
+  // 定期分析（5秒ごと）
   useEffect(() => {
     if (sttStatus !== "connected") return
 
     // セッション開始時に最初の分析をスケジュール
     const initialTimer = setTimeout(() => {
       triggerAnalysis()
-    }, 10000)
+    }, 5000)
 
-    // その後は10秒ごとに分析を実行
+    // その後は5秒ごとに分析を実行
     const interval = setInterval(() => {
       triggerAnalysis()
-    }, 10000)
+    }, 5000)
 
     return () => {
       clearTimeout(initialTimer)
@@ -928,7 +928,7 @@ export default function MeetingPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                   </span>
-                  <span>10秒ごとに更新中...</span>
+                  <span>5秒ごとに更新中...</span>
                   {isLoadingSuggestions && <span>（更新中）</span>}
                 </div>
 
@@ -1152,7 +1152,7 @@ export default function MeetingPage() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </span>
-                    <span>10秒ごとに更新中...</span>
+                    <span>5秒ごとに更新中...</span>
                     {isLoadingSuggestions && <span>（更新中）</span>}
                   </div>
 

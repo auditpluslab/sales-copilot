@@ -423,6 +423,7 @@ export default function MeetingPage() {
 
           // 前回の提案を保存
           previousSuggestionsRef.current = newSuggestions
+        }
       } else {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }

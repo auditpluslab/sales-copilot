@@ -320,110 +320,106 @@ export default function MeetingPage() {
           ? data.suggestions
           : { questions: [], proposals: [] }
         if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', newSuggestions.questions?.length, 'questions')
-      } else {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`)
-      }
 
-      // 前回の提案と比較して新しいアイテムを検出
-      const prevQuestions = previousSuggestionsRef.current.questions || []
-      const prevProposals = previousSuggestionsRef.current.proposals || []
-      const newQuestions = newSuggestions.questions || []
-      const newProposals = newSuggestions.proposals || []
+        // 前回の提案と比較して新しいアイテムを検出
+        const prevQuestions = previousSuggestionsRef.current.questions || []
+        const prevProposals = previousSuggestionsRef.current.proposals || []
+        const newQuestions = newSuggestions.questions || []
+        const newProposals = newSuggestions.proposals || []
 
-          // 新しい質問を検出
-          const newQuestionsItems = newQuestions.filter((q: DeepDiveQuestion) =>
-            !prevQuestions.some((pq: DeepDiveQuestion) => pq.id === q.id)
-          )
+        // 新しい質問を検出
+        const newQuestionsItems = newQuestions.filter((q: DeepDiveQuestion) =>
+          !prevQuestions.some((pq: DeepDiveQuestion) => pq.id === q.id)
+        )
 
-          // 新しい提案を検出
-          const newProposalsItems = newProposals.filter((p: SuggestionCard) =>
-            !prevProposals.some((pp: SuggestionCard) => pp.id === p.id)
-          )
+        // 新しい提案を検出
+        const newProposalsItems = newProposals.filter((p: SuggestionCard) =>
+          !prevProposals.some((pp: SuggestionCard) => pp.id === p.id)
+        )
 
-          // 新しい質問をトースト通知
-          newQuestionsItems.forEach((q: DeepDiveQuestion) => {
-            const { dismiss } = toast({
-              title: "💡 新しい質問",
-              description: q.question,
-              action: (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    togglePin("question", q)
-                    dismiss()
-                  }}
-                  className="mt-2"
-                >
-                  ピン留め
-                </Button>
-              ),
-            })
+        // 新しい質問をトースト通知
+        newQuestionsItems.forEach((q: DeepDiveQuestion) => {
+          const { dismiss } = toast({
+            title: "💡 新しい質問",
+            description: q.question,
+            action: (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  togglePin("question", q)
+                  dismiss()
+                }}
+                className="mt-2"
+              >
+                ピン留め
+              </Button>
+            ),
           })
+        })
 
-          // 新しい提案をトースト通知
-          newProposalsItems.forEach((p: SuggestionCard) => {
-            const { dismiss } = toast({
-              title: "📋 新しい提案",
-              description: p.title,
-              action: (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    togglePin("proposal", p)
-                    dismiss()
-                  }}
-                  className="mt-2"
-                >
-                  ピン留め
-                </Button>
-              ),
-            })
+        // 新しい提案をトースト通知
+        newProposalsItems.forEach((p: SuggestionCard) => {
+          const { dismiss } = toast({
+            title: "📋 新しい提案",
+            description: p.title,
+            action: (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  togglePin("proposal", p)
+                  dismiss()
+                }}
+                className="mt-2"
+              >
+                ピン留め
+              </Button>
+            ),
           })
+        })
 
-          // priorityが3以上の質問とconfidenceがhighの提案を自動ピン留め
-          const autoPinQuestions = newQuestionsItems.filter((q: DeepDiveQuestion) => q.priority >= 3)
-          const autoPinProposals = newProposalsItems.filter((p: SuggestionCard) => p.confidence === "high")
+        // priorityが3以上の質問とconfidenceがhighの提案を自動ピン留め
+        const autoPinQuestions = newQuestionsItems.filter((q: DeepDiveQuestion) => q.priority >= 3)
+        const autoPinProposals = newProposalsItems.filter((p: SuggestionCard) => p.confidence === "high")
 
-          if (autoPinQuestions.length > 0) {
-            setPinnedItems(prev => ({
-              ...prev,
-              questions: [...prev.questions, ...autoPinQuestions],
-            }))
-          }
-
-          if (autoPinProposals.length > 0) {
-            setPinnedItems(prev => ({
-              ...prev,
-              proposals: [...prev.proposals, ...autoPinProposals],
-            }))
-          }
-
-          // 履歴に追加（最大100件、重複を除外）
-          setHistory(prev => {
-            const existingQuestionIds = new Set(prev.questions.map(q => q.id))
-            const existingProposalIds = new Set(prev.proposals.map(p => p.id))
-
-            const uniqueNewQuestions = newQuestions.filter((q: DeepDiveQuestion) =>
-              !existingQuestionIds.has(q.id)
-            )
-            const uniqueNewProposals = newProposals.filter((p: SuggestionCard) =>
-              !existingProposalIds.has(p.id)
-            )
-
-            return {
-              questions: [...uniqueNewQuestions, ...prev.questions].slice(0, 100),
-              proposals: [...uniqueNewProposals, ...prev.proposals].slice(0, 100),
-            }
-          })
-
-          // 提案を更新
-          setSuggestions(newSuggestions)
-
-          // 前回の提案を保存
-          previousSuggestionsRef.current = newSuggestions
+        if (autoPinQuestions.length > 0) {
+          setPinnedItems(prev => ({
+            ...prev,
+            questions: [...prev.questions, ...autoPinQuestions],
+          }))
         }
+
+        if (autoPinProposals.length > 0) {
+          setPinnedItems(prev => ({
+            ...prev,
+            proposals: [...prev.proposals, ...autoPinProposals],
+          }))
+        }
+
+        // 履歴に追加（最大100件、重複を除外）
+        setHistory(prev => {
+          const existingQuestionIds = new Set(prev.questions.map(q => q.id))
+          const existingProposalIds = new Set(prev.proposals.map(p => p.id))
+
+          const uniqueNewQuestions = newQuestions.filter((q: DeepDiveQuestion) =>
+            !existingQuestionIds.has(q.id)
+          )
+          const uniqueNewProposals = newProposals.filter((p: SuggestionCard) =>
+            !existingProposalIds.has(p.id)
+          )
+
+          return {
+            questions: [...uniqueNewQuestions, ...prev.questions].slice(0, 100),
+            proposals: [...uniqueNewProposals, ...prev.proposals].slice(0, 100),
+          }
+        })
+
+        // 提案を更新
+        setSuggestions(newSuggestions)
+
+        // 前回の提案を保存
+        previousSuggestionsRef.current = newSuggestions
       } else {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }

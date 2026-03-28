@@ -740,11 +740,25 @@ export default function MeetingPage() {
                           </div>
                         ))
                       ) : (
-                        <p className="text-gray-400 text-center py-8">
-                          まだ文字起こしがありません
-                          <br />
-                          <span className="text-xs">「会議開始」ボタンを押して開始してください</span>
-                        </p>
+                        <div className="text-center py-8">
+                          <p className="text-gray-400">
+                            まだ文字起こしがありません
+                            <br />
+                            <span className="text-xs">「会議開始」ボタンを押して開始してください</span>
+                          </p>
+                          {/* デバッグ情報 */}
+                          <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+                            <p className="font-medium mb-2">🔍 デバッグ情報:</p>
+                            <p>STTステータス: <span className="font-mono bg-white px-1 rounded">{sttStatus}</span></p>
+                            <p>セグメント数: <span className="font-mono bg-white px-1 rounded">{sttSegments.length}</span></p>
+                            <p>文字数: <span className="font-mono bg-white px-1 rounded">{sttSegments.map(s => s.text).join('').length}</span></p>
+                            <p className="mt-2 text-gray-500">
+                              {sttStatus === "connected" ? "✅ 接続済み - 提案生成条件: 3セグメント以上 && 100文字以上" :
+                               sttStatus === "connecting" ? "⏳ 接続中..." :
+                               "❌ 未接続 - 「会議開始」ボタンをクリックしてください"}
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </CardContent>

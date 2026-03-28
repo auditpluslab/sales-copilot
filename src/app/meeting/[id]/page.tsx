@@ -316,15 +316,10 @@ export default function MeetingPage() {
       if (response.ok) {
         const data = await response.json()
         // suggestionsがnullまたはundefinedの場合、空のオブジェクトを使用
-        var newSuggestions = (data?.suggestions && typeof data.suggestions === 'object')
+        const newSuggestions = (data?.suggestions && typeof data.suggestions === 'object')
           ? data.suggestions
           : { questions: [], proposals: [] }
         if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', newSuggestions.questions?.length, 'questions')
-      } else if (response.status === 401) {
-        // 認証エラー: 開発環境ではモックデータを使用
-        console.warn('[refreshSuggestions] Auth error - using mock suggestions in development')
-        var newSuggestions = { questions: [], proposals: [] }
-        if (DEBUG) console.log('[refreshSuggestions] Using mock suggestions due to 401')
       } else {
         throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }

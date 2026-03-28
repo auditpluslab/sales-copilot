@@ -6,16 +6,13 @@ import { cookies } from "next/headers"
  * サーバーサイドで認証チェックを行う
  * 認証済みの場合はuser_idを返す
  * 未認証の場合は401レスポンスを返す
+ *
+ * 開発環境では認証をスキップしてモックユーザーIDを返す
  */
 export async function requireAuth() {
-  // モック認証チェック（E2Eテスト用）
+  // 開発環境では認証をスキップ
   if (process.env.NODE_ENV !== "production") {
-    const cookieStore = await cookies()
-    const mockAccessToken = cookieStore.get("sb-access-token")
-
-    if (mockAccessToken?.value === "test-mock-access-token") {
-      return "test-user-id"
-    }
+    return "test-user-id"
   }
 
   const supabase = createClient()
@@ -35,16 +32,13 @@ export async function requireAuth() {
  * サーバーサイドで認証チェックを行い、user_idを返す
  * 認証済みの場合はuser_id文字列を返す
  * 未認証の場合はnullを返す
+ *
+ * 開発環境では認証をスキップしてモックユーザーIDを返す
  */
 export async function getUserId(): Promise<string | null> {
-  // モック認証チェック（E2Eテスト用）
+  // 開発環境では認証をスキップ
   if (process.env.NODE_ENV !== "production") {
-    const cookieStore = await cookies()
-    const mockAccessToken = cookieStore.get("sb-access-token")
-
-    if (mockAccessToken?.value === "test-mock-access-token") {
-      return "test-user-id"
-    }
+    return "test-user-id"
   }
 
   const supabase = createClient()

@@ -316,16 +316,24 @@ export default function MeetingPage() {
       if (response.ok) {
         const data = await response.json()
         // suggestionsがnullまたはundefinedの場合、空のオブジェクトを使用
-        const newSuggestions = (data?.suggestions && typeof data.suggestions === 'object')
+        var newSuggestions = (data?.suggestions && typeof data.suggestions === 'object')
           ? data.suggestions
           : { questions: [], proposals: [] }
-          if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', newSuggestions.questions?.length, 'questions')
+        if (DEBUG) console.log('[refreshSuggestions] Setting suggestions:', newSuggestions.questions?.length, 'questions')
+      } else if (response.status === 401) {
+        // 認証エラー: 開発環境ではモックデータを使用
+        console.warn('[refreshSuggestions] Auth error - using mock suggestions in development')
+        var newSuggestions = { questions: [], proposals: [] }
+        if (DEBUG) console.log('[refreshSuggestions] Using mock suggestions due to 401')
+      } else {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`)
+      }
 
-          // 前回の提案と比較して新しいアイテムを検出
-          const prevQuestions = previousSuggestionsRef.current.questions || []
-          const prevProposals = previousSuggestionsRef.current.proposals || []
-          const newQuestions = newSuggestions.questions || []
-          const newProposals = newSuggestions.proposals || []
+      // 前回の提案と比較して新しいアイテムを検出
+      const prevQuestions = previousSuggestionsRef.current.questions || []
+      const prevProposals = previousSuggestionsRef.current.proposals || []
+      const newQuestions = newSuggestions.questions || []
+      const newProposals = newSuggestions.proposals || []
 
           // 新しい質問を検出
           const newQuestionsItems = newQuestions.filter((q: DeepDiveQuestion) =>

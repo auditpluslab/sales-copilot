@@ -296,9 +296,9 @@ export default function MeetingPage() {
       const clientId = session?.client_id || ''
       const clientIdParam = clientId ? `&client_id=${clientId}` : ''
 
-      // タイムアウト付きのfetch（30秒）
+      // タイムアウト付きのfetch（90秒）
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
 
       let response
       try {
@@ -307,7 +307,7 @@ export default function MeetingPage() {
         })
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
-          throw new Error('提案の生成がタイムアウトしました（30秒）')
+          throw new Error('提案の生成がタイムアウトしました（90秒）')
         }
         throw fetchError
       } finally {

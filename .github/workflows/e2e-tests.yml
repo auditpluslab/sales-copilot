@@ -27,6 +27,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Setup E2E authentication
+        run: |
+          mkdir -p e2e/.auth
+          echo '{"mock": true}' > e2e/.auth/user.json
+
       - name: Start development server
         run: |
           npm run dev &
@@ -34,6 +39,8 @@ jobs:
 
       - name: Run E2E tests
         run: npm run test:e2e
+        env:
+          CI: true
 
       - name: Upload test results
         if: always()
@@ -48,5 +55,65 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-screenshots
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos
+          path: test-results/
+          retention-days: 30
+
+  comprehensive-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Setup E2E authentication
+        run: |
+          mkdir -p e2e/.auth
+          echo '{"mock": true}' > e2e/.auth/user.json
+
+      - name: Start development server
+        run: |
+          npm run dev &
+          npx wait-on http://localhost:3000 --timeout 120000
+
+      - name: Run comprehensive meeting tests
+        run: npx playwright test e2e/comprehensive-meeting.spec.ts
+        env:
+          CI: true
+
+      - name: Upload comprehensive test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-test-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload comprehensive test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-test-screenshots
           path: test-results/
           retention-days: 30

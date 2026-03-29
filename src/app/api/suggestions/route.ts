@@ -9,9 +9,22 @@ import { getUserId } from "@/lib/auth-server"
 
 // GET /api/suggestions - セッションの提案取得
 export async function GET(request: NextRequest) {
+  const logFile = '/tmp/suggestions-api.log'
+  const log = (msg: string) => {
+    console.log(msg)
+    // ファイルにも書き出し
+    try {
+      require('fs').appendFileSync(logFile, new Date().toISOString() + ' ' + msg + '\n')
+    } catch (e) {
+      // ファイル書き込みエラーは無視
+    }
+  }
+
+  log('[Suggestions API] Called with URL: ' + request.url)
   try {
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get("session_id")
+    log('[Suggestions API] Session ID: ' + sessionId)
     const clientId = searchParams.get("client_id")  // クライアントIDを追加
     const statsParam = searchParams.get("stats")
     const transcriptParam = searchParams.get("transcript")
@@ -58,25 +71,37 @@ export async function GET(request: NextRequest) {
     }
 
     // 文字起こしテキストがある場合は、LLMを使って提案を生成
+    log('[Suggestions API] transcriptText.length: ' + transcriptText.length)
+    log('[Suggestions API] transcriptText preview: ' + transcriptText.substring(0, 100))
+    log('[Suggestions API] About to check if transcriptText.length > 0')
     if (transcriptText.length > 0) {
+      log('[Suggestions API] Entered if block - calling LLM')
       // 開発環境では認証チェックをスキップ（USE_LLM_IN_DEVがtrueの場合のみ）
       const shouldSkipAuth = process.env.NODE_ENV !== "production" &&
                             process.env.NEXT_PUBLIC_USE_LLM_IN_DEV === 'true'
 
+      log('[Suggestions API] shouldSkipAuth: ' + shouldSkipAuth)
+
       const userId = shouldSkipAuth ? "test-user-id" : await getUserId()
 
+      log('[Suggestions API] userId: ' + userId)
+
       if (!shouldSkipAuth && !userId) {
+        log('[Suggestions API] Authentication required - returning 401')
         return NextResponse.json(
           { error: "Authentication required" },
           { status: 401 }
         )
       }
-      console.log('[Suggestions] Generating suggestions from transcript using LLM')
+      log('[Suggestions API] About to generate suggestions from transcript using LLM')
       console.log('[Suggestions] Transcript length:', transcriptText.length)
       console.log('[Suggestions] Client ID:', clientId)
+      log('[Suggestions API] Client ID: ' + clientId)
       try {
+        log('[Suggestions API] Calling generateInsight...')
         // インサイトを生成
         const insight = await generateInsight(transcriptText, null)
+        log('[Suggestions API] generateInsight completed, insight keys: ' + Object.keys(insight || {}).join(','))
 
         // クライアントIDがある場合は、履歴を考慮した提案生成
         if (clientId && isValidUuid(clientId)) {
@@ -97,10 +122,14 @@ export async function GET(request: NextRequest) {
         } else {
           // 従来の提案生成（フォールバック）
           console.log('[Suggestions] Using standard suggestions (no client history)')
+          log('[Suggestions API] Using standard suggestions (no client history)')
+          log('[Suggestions API] Calling generateSuggestions...')
           const suggestions = await generateSuggestions(insight, transcriptText)
+          log('[Suggestions API] generateSuggestions completed, keys: ' + Object.keys(suggestions || {}).join(','))
           return NextResponse.json({ suggestions })
         }
       } catch (error) {
+        log('[Suggestions API] Error in generateInsight or generateSuggestions: ' + error)
         console.error('Failed to generate suggestions from LLM:', error)
         // LLMエラー時はフォールバック
       }

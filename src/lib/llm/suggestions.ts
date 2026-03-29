@@ -194,8 +194,9 @@ ${JSON.stringify(insight, null, 2)}
 重要：思考プロセスから出力を開始してください。JSONだけを出力しないでください。`;
 
   // 会話が十分でない場合は空のレスポンスを返す
-  if (transcriptText.length < 100) {
-    console.log('[Suggestions] Transcript too short, returning empty response')
+  // NOTE: 100文字未満でもLLMを呼ぶように変更（Chain of Thoughtプロンプトが短いテキストでも動作するため）
+  if (transcriptText.length === 0) {
+    console.log('[Suggestions] No transcript provided, returning empty response')
     return {
       questions: [],
       proposals: []
@@ -228,12 +229,31 @@ ${JSON.stringify(insight, null, 2)}
   // デバッグ：LLMの生の出力をログに出力
   console.log("[LLM Raw Output Length]:", result.content.length)
   console.log("[LLM Raw Output Preview]:", result.content.substring(0, 500))
+  console.log("[LLM Raw Output Full]:", result.content) // フル出力を追加
+  // ファイルにも書き出し
+  try {
+    require('fs').appendFileSync('/tmp/llm-output.log', new Date().toISOString() + '\n[LLM Raw Output]\n' + result.content + '\n\n')
+  } catch (e) {
+    console.error("[ERROR] Failed to write llm-output.log:", e)
+  }
+
+  // デバッグ用：生の出力をデバッグオブジェクトクトとして返す
+  const debugInfo = {
+    _debug: {
+      rawOutputLength: result.content.length,
+      rawOutputPreview: result.content.substring(0, 500)
+    }
+  }
 
   // Chain of Thoughtの出力からJSON部分のみを抽出
   let content = result.content || "{}"
 
   // JSONコードブロックを抽出（```json と ``` の間）
   const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
+  console.log("[JSON Match Result]:", jsonMatch ? "FOUND" : "NOT FOUND")
+  if (jsonMatch) {
+    console.log("[JSON Match Groups]:", jsonMatch[1] ? jsonMatch[1].substring(0, 200) : "EMPTY")
+  }
 
   if (jsonMatch && jsonMatch[1]) {
     // JSONコードブロックが見つかった場合
@@ -241,15 +261,25 @@ ${JSON.stringify(insight, null, 2)}
 
     // デバッグ：抽出したJSONのプレビュー
     console.log("[Extracted JSON Preview]:", extractedJson.substring(0, 200))
+    console.log("[Extracted JSON Full]:", extractedJson) // フルJSONを追加
 
     content = extractedJson
   } else {
     // フォールバック：Markdownコードブロックを削除
     console.warn("[WARN] JSON code block not found, falling back to markdown removal")
+    console.log("[WARN] Content before cleanup:", content.substring(0, 500))
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    console.log("[WARN] Content after cleanup:", content.substring(0, 500))
+    console.log("[WARN] Content after cleanup Full]:", content) // フル出力を追加
   }
 
   const parsed = JSON.parse(content)
+
+  console.log("[Parsed JSON keys]:", Object.keys(parsed))
+  console.log("[Parsed questions count]:", (parsed.questions || []).length)
+  console.log("[Parsed proposals count]:", (parsed.proposals || []).length)
+  console.log("[Parsed questions]:", JSON.stringify(parsed.questions, null, 2))
+  console.log("[Parsed proposals]:", JSON.stringify(parsed.proposals, null, 2))
 
   // idがない場合は自動生成（一意なIDを生成）
   const generateId = (prefix: string, index: number) => {
@@ -268,5 +298,5 @@ ${JSON.stringify(insight, null, 2)}
 
   console.log(`[Suggestions] Generated ${questions.length} questions, ${proposals.length} proposals`)
 
-  return { questions, proposals }
+  return { questions, proposals, ...debugInfo }
 }

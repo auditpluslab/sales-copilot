@@ -53,6 +53,11 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
         connectionRef.current = null
       },
       onTranscript: async (segment) => {
+        console.log('[STT] Transcript received:', {
+          is_final: segment.is_final,
+          text: segment.text.substring(0, 50) + '...',
+          id: segment.id
+        })
         setSegments((prev) => {
           if (segment.is_final) {
             // 最終結果として追加
@@ -69,14 +74,23 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
 
         // 最終結果のみSupabase Functionに送信
         if (segment.is_final) {
+          console.log('[STT] Saving final segment to database:', segment.text.substring(0, 50) + '...')
           try {
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
             const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+            console.log('[STT] Supabase config:', {
+              hasUrl: !!supabaseUrl,
+              hasKey: !!supabaseAnonKey,
+              hasUserId: !!userId,
+              userId
+            })
+
             if (supabaseUrl && supabaseAnonKey && userId) {
               const functionUrl = `${supabaseUrl}/functions/v1/transcript-received`
 
-              await fetch(functionUrl, {
+              console.log('[STT] Calling Supabase Function:', functionUrl)
+              const response = await fetch(functionUrl, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -95,9 +109,12 @@ export function useSTT(options: UseSTTOptions): UseSTTReturn {
                   },
                 }),
               })
+              console.log('[STT] Supabase Function response:', response.status, response.statusText)
+            } else {
+              console.log('[STT] Skipping save - missing config:', { hasUrl: !!supabaseUrl, hasKey: !!supabaseAnonKey, hasUserId: !!userId })
             }
           } catch (error) {
-            console.error("Failed to save transcript:", error)
+            console.error("[STT] Failed to save transcript:", error)
           }
         }
       },

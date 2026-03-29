@@ -20,20 +20,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 開発環境では簡易的に空データを返す
-    // 実際にはlocalStorageやメモリから取得する仕組みが必要ですが、
-    // 今回は簡易実装とします
-    if (process.env.NODE_ENV !== "production") {
-      // セッションIDをキーにしてメモリ上のデータを取得することも可能ですが、
-      // 今回は空の配列を返して、文字起こしの長さはクライアント側で計算します
-      return NextResponse.json({
-        segments: [],
-        session_id: sessionId,
-        total_length: 0,
-        message: "Development mode - transcripts stored in memory only"
-      })
-    }
-
     const supabase = createClient()
 
     // limitパラメータのバリデーション

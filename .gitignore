@@ -37,3 +37,13 @@ next-env.d.ts
 # inngest
 .inngest
 .gstack/
+
+# test files
+inject-test-transcripts.mjs
+/src/app/api/test-get-transcripts/
+/src/app/api/test-inject-transcripts/
+
+# playwright test results
+test-results/
+/playwright-report/
+/playwright/.cache/

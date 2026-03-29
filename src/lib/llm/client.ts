@@ -6,12 +6,12 @@ export interface ChatMessage {
   content: string
 }
 
-// DeepSeek API (OpenAI-compatible)
-const apiKey = process.env.DEEPSEEK_API_KEY
-const baseURL = "https://api.deepseek.com"
+// GLM API (OpenAI-compatible)
+const apiKey = process.env.GLM_API_KEY
+const baseURL = "https://open.bigmodel.cn/api/paas/v4"
 
 if (!apiKey) {
-  console.warn("DEEPSEEK_API_KEY is not set - LLM features will not work")
+  console.warn("GLM_API_KEY is not set - LLM features will not work")
 }
 
 export const llmClient = new OpenAI({
@@ -29,7 +29,7 @@ export async function chatCompletion(
   }
 ) {
   if (!apiKey) {
-    throw new Error("DEEPSEEK_API_KEY is not set")
+    throw new Error("GLM_API_KEY is not set")
   }
 
   const maxRetries = 3
@@ -38,7 +38,7 @@ export async function chatCompletion(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await llmClient.chat.completions.create({
-        model: options?.model || "deepseek-chat",
+        model: options?.model || "glm-4",
         messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
         temperature: options?.temperature ?? 0.3,
         max_tokens: options?.maxTokens ?? 2000,
@@ -98,13 +98,13 @@ export async function structuredOutput<T>(
   }
 ): Promise<T> {
   if (!apiKey) {
-    throw new Error("DEEPSEEK_API_KEY is not set")
+    throw new Error("GLM_API_KEY is not set")
   }
 
   const schemaDescription = JSON.stringify(schema)
 
   const response = await llmClient.chat.completions.create({
-    model: options?.model || "deepseek-chat",
+    model: options?.model || "glm-4",
     messages: [
       {
         role: "system",

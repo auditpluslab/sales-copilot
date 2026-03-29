@@ -23,6 +23,9 @@ export default defineConfig({
     // 認証済みのストレージステートを使用
     storageState: path.join(__dirname, 'e2e', '.auth', 'user.json'),
   },
+
+  // テスト出力ディレクトリの設定
+  outputDir: 'test-results',
   projects: [
     {
       name: 'chromium',

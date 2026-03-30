@@ -224,7 +224,9 @@ export default function MeetingPage() {
 
   // テストモード用：ダミーの提案を自動生成
   useEffect(() => {
-    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
+    // URLパラメータでテストモードを検出
+    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true' ||
+                       window.location.search.includes('test=true')
 
     if (isTestMode && !previousSuggestionsRef.current.questions.length) {
       console.log('[Test Mode] Injecting dummy suggestions...')

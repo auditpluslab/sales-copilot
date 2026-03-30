@@ -247,13 +247,8 @@ test.describe('包括的会議機能テスト', () => {
       })
     })
 
-    await page.goto(`/meeting/${testSessionId}`)
+    await page.goto(`/meeting/${testSessionId}?test=true`)
     await page.waitForLoadState('domcontentloaded')
-
-    // テストモードを有効にする
-    await page.evaluate(() => {
-      ;(window as any).__NEXT_PUBLIC_TEST_MODE__ = 'true'
-    })
 
     // 提案が読み込まれるのを待機（初期化）
     await page.waitForTimeout(15000)

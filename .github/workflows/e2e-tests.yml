@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install tsx for test data setup
+        run: npm install --save-dev tsx
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
@@ -31,6 +34,13 @@ jobs:
         run: |
           mkdir -p e2e/.auth
           echo '{"mock": true}' > e2e/.auth/user.json
+
+      - name: Setup test data
+        run: npm run test:setup-data
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Start development server
         run: |
@@ -88,6 +98,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install tsx for test data setup
+        run: npm install --save-dev tsx
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
@@ -95,6 +108,13 @@ jobs:
         run: |
           mkdir -p e2e/.auth
           echo '{"mock": true}' > e2e/.auth/user.json
+
+      - name: Setup test data
+        run: npm run test:setup-data
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Start development server
         run: |

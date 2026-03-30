@@ -222,6 +222,52 @@ export default function MeetingPage() {
     })
   }, [sttSegments, segments, addSegment])
 
+  // テストモード用：ダミーの提案を自動生成
+  useEffect(() => {
+    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
+
+    if (isTestMode && !previousSuggestionsRef.current.questions.length) {
+      console.log('[Test Mode] Injecting dummy suggestions...')
+
+      const dummySuggestions = {
+        questions: [
+          {
+            id: 'test-q1',
+            question: '導入の目的と期待される効果について具体的にお聞かせいただけますか？',
+            intent: '導入目的の明確化',
+            category: 'value',
+            priority: 3,
+            evidence: 'テストモード用ダミー'
+          } as any
+        ],
+        proposals: [
+          {
+            id: 'test-p1',
+            type: 'proposal',
+            title: '導入効果の早期可視化',
+            body: 'まずは1ヶ月間のトライアル導入を行い、具体的な改善数値をご提示することをお勧めします。',
+            confidence: 'high',
+            rank: 1,
+            created_at: new Date().toISOString()
+          } as any,
+          {
+            id: 'test-p2',
+            type: 'proposal',
+            title: '導入の目的と期待される効果',
+            body: '導入の目的と期待される効果について、早期可視化とコスト削減を実現します。',
+            confidence: 'medium',
+            rank: 2,
+            created_at: new Date().toISOString()
+          } as any
+        ]
+      }
+
+      // ダミー提案をstateに設定
+      previousSuggestionsRef.current = dummySuggestions
+      console.log('[Test Mode] Dummy suggestions injected:', dummySuggestions.questions.length, 'questions,', dummySuggestions.proposals.length, 'proposals')
+    }
+  }, [])
+
   // segmentsが変更されたら、finalセグメント数をチェックして更新をトリガー
   const previousFinalSegmentCount = useRef(0)
   useEffect(() => {

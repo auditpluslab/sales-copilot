@@ -99,8 +99,15 @@ async function setupTestData() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+  // CI環境で環境変数がない場合はスキップ
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase credentials. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.")
+    console.log("⚠️  Supabase credentials not found. Skipping test data setup.")
+    console.log("   Tests will use API mocking instead.")
+    return {
+      success: true,
+      skipped: true,
+      sessionId: TEST_SESSION_ID,
+    }
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey, {

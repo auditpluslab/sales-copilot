@@ -126,12 +126,20 @@ export async function GET(request: NextRequest) {
           log('[Suggestions API] Calling generateSuggestions...')
           const suggestions = await generateSuggestions(insight, transcriptText)
           log('[Suggestions API] generateSuggestions completed, keys: ' + Object.keys(suggestions || {}).join(','))
+          log('[Suggestions API] Returning response with suggestions')
           return NextResponse.json({ suggestions })
         }
       } catch (error) {
         log('[Suggestions API] Error in generateInsight or generateSuggestions: ' + error)
         console.error('Failed to generate suggestions from LLM:', error)
-        // LLMエラー時はフォールバック
+        // LLMエラー時はフォールバック - 空の提案を返す
+        log('[Suggestions API] LLM error, returning empty suggestions')
+        return NextResponse.json({
+          suggestions: {
+            questions: [],
+            proposals: [],
+          }
+        })
       }
     }
 

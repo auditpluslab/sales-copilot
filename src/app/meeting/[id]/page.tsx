@@ -51,6 +51,8 @@ export default function MeetingPage() {
   const [sttError, setSttError] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [lastErrorNotification, setLastErrorNotification] = useState<number>(0) // エラー通知の時刻を記録
+  const [currentErrorId, setCurrentErrorId] = useState<number>(0) // エラーの一意ID（重複防止用）
   const [duplicateWarnings, setDuplicateWarnings] = useState<{
     duplicateQuestions?: number
     duplicateProposals?: number
@@ -345,7 +347,7 @@ export default function MeetingPage() {
   const refreshSuggestions = useCallback(async () => {
     try {
       setIsLoadingSuggestions(true)
-      setApiError(null)
+      setApiError(null) // 新しいリクエスト開始時にエラーをリセット
 
       // 文字起こしの統計情報を計算（常に最新のセグメントを取得）
       const currentSegments = getFinalSegments()
@@ -375,9 +377,9 @@ export default function MeetingPage() {
       const clientId = session?.client_id || ''
       const clientIdParam = clientId ? `&client_id=${clientId}` : ''
 
-      // タイムアウト付きのfetch（90秒）
+      // タイムアウト付きのfetch（60秒）
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 90000)
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
 
       let response
       try {
@@ -386,7 +388,7 @@ export default function MeetingPage() {
         })
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
-          throw new Error('提案の生成がタイムアウトしました（90秒）')
+          throw new Error('提案の生成がタイムアウトしました（60秒）')
         }
         throw fetchError
       } finally {
@@ -520,16 +522,26 @@ export default function MeetingPage() {
 
       setApiError(errorMessage)
 
-      // ユーザーにトースト通知
-      toast({
-        title: "提案の生成に失敗しました",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      // エラー通知の重複を厳密に防止（同じエラーメッセージの場合は通知しない）
+      const errorHash = errorMessage.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0)
+      const now = Date.now()
+
+      // 前回の通知から10秒以上経過しているか、エラー内容が異なる場合のみ通知
+      if (now - lastErrorNotification > 10000 || currentErrorId !== errorHash) {
+        setLastErrorNotification(now)
+        setCurrentErrorId(errorHash)
+
+        // ユーザーにトースト通知（1回だけ）
+        toast({
+          title: "提案の生成に失敗しました",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsLoadingSuggestions(false)
     }
-  }, [sessionId, getFinalSegments, session, toast, togglePin])
+  }, [sessionId, getFinalSegments, session, toast, togglePin, lastErrorNotification, currentErrorId])
 
   // refを更新（triggerAnalysisが常に最新の関数を呼び出せるように）
   useEffect(() => {

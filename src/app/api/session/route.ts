@@ -9,9 +9,11 @@ import type { Session } from "@/types"
 // GET /api/session - セッション一覧取得または個別セッション取得
 export async function GET(request: NextRequest) {
   try {
-    // CSRF検証（POSTのみだが念のため）
-    const csrfError = await validateCsrfMiddleware(request)
-    if (csrfError) return csrfError
+    // CSRF検証（本番環境のみ有効）
+    if (process.env.NODE_ENV === "production") {
+      const csrfError = await validateCsrfMiddleware(request)
+      if (csrfError) return csrfError
+    }
 
     // 認証チェック（開発環境ではスキップ）
     let userId = await getUserId()
@@ -131,11 +133,15 @@ export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/session called')
 
-    // CSRF検証（開発モードでも有効）
-    const csrfError = await validateCsrfMiddleware(request)
-    if (csrfError) {
-      console.log('CSRF validation failed')
-      return csrfError
+    // CSRF検証（本番環境のみ有効）
+    if (process.env.NODE_ENV === "production") {
+      const csrfError = await validateCsrfMiddleware(request)
+      if (csrfError) {
+        console.log('CSRF validation failed')
+        return csrfError
+      }
+    } else {
+      console.log('CSRF validation skipped in development mode')
     }
 
     // 認証チェック

@@ -22,10 +22,10 @@
     },
     {
       "name": "csrf_token",
-      "value": "1774851087072.i9rzV4QLpPYgDqQ9DXbtoOlekQnx1z9L.0a2582bca9381b6286896d614f4cd21ff598995193e817776356c7304482212f",
+      "value": "1774864569796.WiNfINTYRL1BXp3Ss6ZvyOkl8epjuACz.358bc98ee6fe80c41c49ac37e23146f081df0e08decef196146a26dcd645bfb0",
       "domain": "localhost",
       "path": "/",
-      "expires": 1774852887.076119,
+      "expires": 1774866369.798489,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Strict"

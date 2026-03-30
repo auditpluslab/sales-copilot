@@ -131,14 +131,11 @@ export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/session called')
 
-    // 開発環境ではCSRF検証をスキップ（テスト用）
-    if (process.env.NODE_ENV === "production") {
-      // CSRF検証
-      const csrfError = await validateCsrfMiddleware(request)
-      if (csrfError) {
-        console.log('CSRF validation failed')
-        return csrfError
-      }
+    // CSRF検証（開発モードでも有効）
+    const csrfError = await validateCsrfMiddleware(request)
+    if (csrfError) {
+      console.log('CSRF validation failed')
+      return csrfError
     }
 
     // 認証チェック

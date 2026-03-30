@@ -62,7 +62,9 @@ test.describe('認証済み: セキュリティ', () => {
   test('CSRFトークンありでPOSTリクエストを送信すると成功する', async ({ page }) => {
     // ページコンテキストでCSRFトークンを取得（クッキーを含めるため）
     const csrfToken = await page.evaluate(async () => {
-      const response = await fetch('http://localhost:3000/api/auth/csrf')
+      const response = await fetch('http://localhost:3000/api/auth/csrf', {
+        credentials: 'include',
+      })
       const data = await response.json()
       return data.csrf_token
     })
@@ -71,6 +73,7 @@ test.describe('認証済み: セキュリティ', () => {
     const result = await page.evaluate(async ({ clientName, meetingTitle, token }) => {
       const response = await fetch('http://localhost:3000/api/session', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': token,

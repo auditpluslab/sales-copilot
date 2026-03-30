@@ -47,6 +47,7 @@ export default function MeetingPage() {
 
   // アクティブタブ
   const [activeTab, setActiveTab] = useState<"pinned" | "history">("pinned")
+  const [mobileActiveTab, setMobileActiveTab] = useState<"segments" | "suggestions">("segments")
   const [sttError, setSttError] = useState<string | null>(null)
   const [apiError, setApiError] = useState<string | null>(null)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
@@ -225,8 +226,10 @@ export default function MeetingPage() {
   // テストモード用：ダミーの提案を自動生成
   useEffect(() => {
     // URLパラメータでテストモードを検出
-    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true' ||
-                       window.location.search.includes('test=true')
+    const urlParams = new URLSearchParams(window.location.search)
+    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true' || urlParams.get('test') === 'true'
+
+    console.log('[Test Mode Check] isTestMode:', isTestMode, 'env:', process.env.NEXT_PUBLIC_TEST_MODE, 'urlParams:', urlParams.get('test'))
 
     if (isTestMode && !previousSuggestionsRef.current.questions.length) {
       console.log('[Test Mode] Injecting dummy suggestions...')
@@ -265,8 +268,36 @@ export default function MeetingPage() {
       }
 
       // ダミー提案をstateに設定
+      console.log('[Test Mode] Setting dummy suggestions to ref...')
       previousSuggestionsRef.current = dummySuggestions
+
+      // 重要：実際のstateも更新する
+      setSuggestions(dummySuggestions)
+
+      // 重要：履歴にも追加（UIで使用されている）
+      setHistory(dummySuggestions)
+
+      // 重要：ピン留めアイテムにも追加（priority >= 3, confidence = highの場合）
+      const autoPinQuestions = dummySuggestions.questions.filter((q: DeepDiveQuestion) => q.priority >= 3)
+      const autoPinProposals = dummySuggestions.proposals.filter((p: SuggestionCard) => p.confidence === 'high')
+
+      if (autoPinQuestions.length > 0) {
+        setPinnedItems(prev => ({
+          ...prev,
+          questions: [...prev.questions, ...autoPinQuestions],
+        }))
+      }
+
+      if (autoPinProposals.length > 0) {
+        setPinnedItems(prev => ({
+          ...prev,
+          proposals: [...prev.proposals, ...autoPinProposals],
+        }))
+      }
+
       console.log('[Test Mode] Dummy suggestions injected:', dummySuggestions.questions.length, 'questions,', dummySuggestions.proposals.length, 'proposals')
+    } else {
+      console.log('[Test Mode] Skipping dummy injection - isTestMode:', isTestMode, 'questions length:', previousSuggestionsRef.current.questions.length)
     }
   }, [])
 
@@ -751,7 +782,7 @@ export default function MeetingPage() {
           {/* レスポンシブレイアウト：モバイルはタブ、デスクトップは2カラム */}
           <div className="md:hidden">
             {/* モバイル用タブ切り替え */}
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "segments" | "suggestions")} className="w-full">
+            <Tabs value={mobileActiveTab} onValueChange={(v) => setMobileActiveTab(v as "segments" | "suggestions")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="segments">
                   📝 文字起こし
